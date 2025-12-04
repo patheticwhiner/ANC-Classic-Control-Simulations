@@ -12,7 +12,7 @@ H∞ 控制的目标是设计一个控制器 `K`，使得在存在外部扰动 `
 
 为了系统化地解决这个问题，我们首先需要构建一个**广义被控对象**（Generalized Plant），通常记为 `P`。如下图所示，`P` 将所有与问题相关的部分都包含在内：被控对象 `G`、权重函数、以及它们之间的连接关系。
 
-![Standard H-infinity Setup](https://www.mathworks.com/help/robust/gs/mixed-sensitivity-loop-shaping-with-hinfsyn_01.png)
+<img src="..\assets\mixed-sens.png" width = 50%/>
 
 - **输入**:
   - `w`: 外部输入，包括扰动、噪声等。
@@ -26,6 +26,8 @@ H∞ 控制的目标是设计一个控制器 `K`，使得在存在外部扰动 `
 ## 3. 权重函数：定义性能需求
 
 我们如何定义“性能好坏”呢？答案是使用**权重函数**（Weighting Functions）。通过为不同的信号（如误差、控制量）分配不同的频率权重，我们可以告诉优化算法我们关心什么。
+
+<img src="..\assets\mixed-sens_a.png" width = 50%/>
 
 在标准的混合灵敏度设计中，主要使用三个权重函数：
 
@@ -201,13 +203,13 @@ DGKF方法指出，对于给定的 `γ > 0`，能满足 `||Tzw||∞ < γ` 的控
 
 1.  存在一个唯一的、半正定（`X∞ >= 0`）的解 `X∞`，满足下面的**控制Riccati方程**（CARE）：
     $$
-    A^T X + XA + C_1^T C_1 + X(\gamma^{-2}B_1 B_1^T - B_2 B_2^T)X = 0
+    A^\top X + XA + C_1^\top C_1 + X(\gamma^{-2}B_1 B_1^\top - B_2 B_2^\top)X = 0
     $$
     （在一些简化假设下，例如 `D12` 和 `C1` 正交）
 
 2.  存在一个唯一的、半正定（`Y∞ >= 0`）的解 `Y∞`，满足下面的**滤波Riccati方程**（FARE）：
     $$
-    AY + YA^T + B_1 B_1^T + Y(\gamma^{-2}C_1^T C_1 - C_2^T C_2)Y = 0
+    AY + YA^\top + B_1 B_1^\top + Y(\gamma^{-2}C_1^\top C_1 - C_2^\top C_2)Y = 0
     $$
     （在一些简化假设下，例如 `D21` 和 `B1` 正交）
 
@@ -225,9 +227,9 @@ DGKF方法指出，对于给定的 `γ > 0`，能满足 `||Tzw||∞ < γ` 的控
 $$
 \begin{align*}
 D_k &= \text{... (取决于 } D_{ij} \text{)} \\
-C_k &= -B_2^T X_\infty \\
-B_k &= (I - \gamma^{-2}Y_\infty X_\infty)^{-1} Y_\infty C_2^T \\
-A_k &= A + \gamma^{-2}B_1 B_1^T X_\infty + B_2 C_k + B_k C_2
+C_k &= -B_2^\top X_\infty \\
+B_k &= (I - \gamma^{-2}Y_\infty X_\infty)^{-1} Y_\infty C_2^\top \\
+A_k &= A + \gamma^{-2}B_1 B_1^\top X_\infty + B_2 C_k + B_k C_2
 \end{align*}
 $$
 *注意：这里的公式是简化形式，实际的公式更为复杂，并需要处理 `D` 矩阵的各种情况。*

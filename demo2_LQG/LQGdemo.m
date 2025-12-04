@@ -1,12 +1,8 @@
 % 需要检查状态空间表示中是否含有延迟
 clear; close all; clc;
 %%
-% % 创建白噪声，并且生成外系统模型
-% run bandlimitedNoise.m
-% % 设定并且辨识次级通路
-% run systemIdentification.m
-load('dataset\bandlimitedNoise.mat');
-load('dataset\systemIdentification.mat');
+load('..\dataset\bltdWhiteNoise_ssmodel.mat');
+load('..\dataset\bpf_ssmodel.mat');
 
 %% 耦合系统
 % 增广状态矩阵

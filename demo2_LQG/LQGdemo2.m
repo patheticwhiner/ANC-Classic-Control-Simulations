@@ -1,10 +1,9 @@
-% filepath: e:\Code\MATLAB_ANC\LQGbasedANC\LQGdemo2.m
 % 使用 LQG 函数改写程序，分开原系统和干扰模型的动态更新
 clear; close all; clc;
 
 %% 加载数据
-load('dataset\bandlimitedNoise.mat');  % 包含干扰模型 Aw, Bw, Cw
-load('dataset\systemIdentification.mat');  % 包含原系统 Af, Bf, Cf
+load('..\dataset\bltdWhiteNoise_ssmodel.mat');  % 包含干扰模型 Aw, Bw, Cw
+load('..\dataset\bpf_ssmodel.mat');  % 包含原系统 Af, Bf, Cf
 
 %% 耦合系统
 % 原系统维度

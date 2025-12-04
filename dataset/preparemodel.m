@@ -2,7 +2,8 @@
 clear; close all; clc;
 
 %% 导入模型
-load('..\dataset\ARMAX_SYSID_30303022.mat');
+addpath('functions');
+load('dataset\ARMAX_SYSID_30303022.mat');
 % 定义对象的标称模型
 d = ARMAXmodel.orders(4);
 A_poly = ARMAXmodel.model.A;
@@ -39,6 +40,29 @@ fprintf('能观标准型状态空间矩阵构建完成。\n');
 
 %% 验证 A_poly 和 B_poly 的互质性（考虑数值误差）
 [is_coprime, gcd_poly, common_roots, analysis] = check_coprimality(A_poly, B_poly);
+
+%% 检查系统的强可镇定性
+[isStrong, unstable_zeros, multiplicities, Bminus, Bplus] = checkStrongStabilizability(B_poly, A_poly);
+
+%% 绘制灵敏度函数
+% 1. 准备系统 (Plant)
+% 将 ARMAX 多项式转换为 LTI 传递函数对象
+% 注意: armax 模型系数是 z^-1 的多项式，tf需要z的多项式，因此需要翻转系数
+plant_tf = tf(fliplr(B_poly), fliplr(A_poly), ts);
+% 2. 准备控制器 (Controller)
+controller_tf = tf(1, 1, ts);
+% 3. 准备频率向量
+w_rad_s = logspace(-1, log10(pi/ts), fs/2); 
+% 4. 调用函数绘制灵敏度图
+fprintf('正在调用 plotSensitivity 函数...\n');
+plotSensitivity(plant_tf, controller_tf, w_rad_s);
+sgtitle('灵敏度分析 (单位反馈 K=1)', 'FontWeight', 'bold');
+
+%% 分析系统零极点
+% 分析零点和极点
+[poles, zers, pole_data, zero_data] = analyze_zeros_poles(a_coeffs, b_coeffs, fs);
+% 打印结果表格
+print_analysis_table(poles, zers, pole_data, zero_data, fs);
 
 %% 观测器设计
 fprintf('\n=== 观测器设计 ===\n');
@@ -399,5 +423,3 @@ function gcd_poly = numerical_gcd(A, B, tol)
         gcd_poly = [1, 0];
     end
 end
-
-
