@@ -40,22 +40,18 @@ subplot(3,1,3); plot(t, u);     title('控制输入');  ylabel('u (N)'); xlabel(
 
 %% 5 结果验证
 % 验证1：闭环系统稳定性
-fprintf('闭环系统特征值实部：%.3f, %.3f\n', real(E(1)), real(E(2))); 
+fprintf('闭环系统特征值实部：%.3f, %.3f\n', real(E(1)), real(E(2)));
 assert(all(real(E) < 0), '闭环系统不稳定！');
 
 % 验证2：稳态误差分析
-steady_state_error = abs(x(end,1)); 
+steady_state_error = abs(x(end,1));
 fprintf('稳态位置误差：%.4f m\n', steady_state_error);
 assert(steady_state_error < 0.05, '稳态误差超出阈值！');
 
 % 验证3：控制能量计算
-control_energy = trapz(t, u.^2); 
+control_energy = trapz(t, u.^2);
 fprintf('控制能量消耗：%.3f J\n', control_energy);
 
 %% 功能扩展
 % 频域分析：绘制闭环系统Bode图
 figure; bode(sys_closed); title('闭环系统频域特性');
-
-% 数据导出：保存仿真结果供进一步分析
-results = struct('time',t, 'position',x(:,1), 'control',u);
-save('lqr_test_results.mat', 'results');

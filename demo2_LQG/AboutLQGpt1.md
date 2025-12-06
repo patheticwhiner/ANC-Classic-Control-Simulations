@@ -1,109 +1,77 @@
-# LQGbasedANC
+# 基于LQG的ANC设计
 
-Originally Designed by [24s153046@stu.hit.edu.cn](mailto:24s153046@stu.hit.edu.cn)
+<font color = red>文档书写格式有点糟糕，可读性较差</font>
 
----
+## 1 线性二次型最优控制问题（LQ问题）
 
-excitation/bandlimitedNoise.m：根据采样频率、目标带限噪声的频带范围生成外系统模型（带通滤波器→状态空间模型）
+若系统是线性的，且性能泛函是状态变量/控制变量的二次型函数的积分，则这样的最优控制问题称为**线性二次型最优控制问题（Linear Quadratic Optimal Problem）**。由于二次型性能指标具有鲜明的物理意义，它代表了大量工程实际问题中提出的性能指标要求，并且在数学处理上比较简单，易于通过状态线性反馈实现闭环最优控制，便于工程实现，因而在实际工程问题中得到了广泛应用。
 
-sysId/systemidentification.m：对所设计的次级通路（带通滤波器）选取ARMAX模型辨识，并转换为状态空间模型
+#### （1）二次型最优控制问题
 
-sysId/identificationDelaytest.m：由于使用MATLAB函数辨识ARMAX模型需要提前知道模型纯时延个数，可以使用程序测试最优的模型时延个数
+对于以下**线性系统**，确定**最优控制律**$u^*(t)$，使**二次型性能指标**最小。就实际工程应用而言，此性能指标较全面地体现了对复杂控制系统的性能要求。
 
-LQG_ANC.m： 一个更老版本的LQGdemo.m，此时还试图仿真钱梵梵等人的论文，因此并未完全选用带限噪声控制
-
-LQGdemo.m：将上述两部分程序生成的状态空间模型合并为增广状态空间模型，并据此设计LQR与LQE（Kalman Filter），完成ANC仿真
-
-LQGdemo2.m: 尝试使用MATLAB内置的LQG函数一步到位设计LQG控制器，并完成ANC仿真
-
----
-
-## 1 理论基础
-
-### 1.1 LQ问题
-
-若系统是线性的，且性能泛函是状态变量/控制变量的二次型函数的积分，则这样的最优控制问题称为线性二次型最优控制问题（Linear Quadratic Optimal Problem）。由于二次型性能指标具有鲜明的物理意义，它代表了大量工程实际问题中提出的性能指标要求，并且在数学处理上比较简单，易于通过状态线性反馈实现闭环最优控制，便于工程师先，因而在实际工程问题中得到了广泛应用。
-
-+ **二次型最优控制问题**：对于以下**线性系统**，确定**最优控制律**$u^*(t)$，使**二次型性能指标**最小。就实际工程应用而言，此性能指标较全面地体现了对复杂控制系统的性能要求。
-+   $L_x = \frac{1}{2} \boldsymbol{x}^\top(t)\boldsymbol{Q}(t)\boldsymbol{x}(t)$ 体现对动态过程的要求。
-+   $L_u = \frac{1}{2} \boldsymbol{u}^\top(t)\boldsymbol{R}(t)\boldsymbol{u}(t)$ 体现对控制能量的限制。
++ $L_x = \frac{1}{2} \boldsymbol{x}^\top(t)\boldsymbol{Q}(t)\boldsymbol{x}(t)$ 体现对动态过程的要求。
++ $L_u = \frac{1}{2} \boldsymbol{u}^\top(t)\boldsymbol{R}(t)\boldsymbol{u}(t)$ 体现对控制能量的限制。
 
 $$
 \dot{\boldsymbol{x}}(t) = \boldsymbol{A}(t)\boldsymbol{x}(t) + \boldsymbol{B}(t)\boldsymbol{u}(t), \quad \boldsymbol{x}(t_0) = \boldsymbol{x}_0\\
 \boldsymbol{y}(t) = \boldsymbol{C}(t)\boldsymbol{x}(t)
 $$
 
-式中，
-$\boldsymbol{x} \in \mathbb{R}^n$, $\boldsymbol{u} \in \mathbb{R}^r$, $\boldsymbol{y} \in \mathbb{R}^m$，
-$\boldsymbol{A}(t)\in \mathbb{R}^{n \times n}$、
-$\boldsymbol{B}(t)\in \mathbb{R}^{n \times r}$和
-$\boldsymbol{C}(t)\in \mathbb{R}^{m \times n}$。
-
+式中，$\boldsymbol{x} \in \mathbb{R}^n$, $\boldsymbol{u} \in \mathbb{R}^r$, $\boldsymbol{y} \in \mathbb{R}^m$，$\boldsymbol{A}(t)\in \mathbb{R}^{n \times n}$、$\boldsymbol{B}(t)\in \mathbb{R}^{n \times r}$和$\boldsymbol{C}(t)\in \mathbb{R}^{m \times n}$。
 $$
 J=\frac{1}{2}\boldsymbol{x}^\top(t_f)\boldsymbol{Q}_f\boldsymbol{x}(t_f)+\frac{1}{2}\int_{t_0}^{t_f}[\boldsymbol{x}^\top(t)\boldsymbol{Q}(t)\boldsymbol{x}(t)+\boldsymbol{u}^\top(t)\boldsymbol{R}(t)\boldsymbol{u}(t)]\text{d}t
 $$
 
-
-式中，
-$\boldsymbol{Q}_f,\ \boldsymbol{Q}(t)\in \mathbb{R}^{n\times n} \geq 0$，
-$\boldsymbol{R}(t)\in\mathbb{R}^{r\times r} >0$
-均为对称矩阵。
+式中，$\boldsymbol{Q}_f,\ \boldsymbol{Q}(t)\in \mathbb{R}^{n\times n} \geq 0$，$\boldsymbol{R}(t)\in\mathbb{R}^{r\times r} >0$均为对称矩阵。
 
 *注：LQ性能指标最小的物理意义是：在整个时间区间 $[t_0,t_f]$ 内，综合考虑过程中偏差、控制消耗的能量和终值误差3个方面总的结果要最小。
 
-+ **有限时间的线性最优调节器**
+#### （2）有限时间的线性最优调节器
 
 *注：有限时间最优调节器问题只考察控制系统由**任意初态**恢复到**平衡状态**的行为；
 
----
+> 工程上所关心的另一类更广泛的问题时：除保证有限时间内系统的**非零初态响应最优性**之外，还要求系统具有**保持平衡状态**的能力；既有**最优性要求**又有**稳定性要求**。此时如果将调节器问题推广到无限时间的情况，就可以在无限时间内既考察**实际上有限时间内的响应**，又考察**系统的稳定性**。
+>
+> $$
+> \dot{\boldsymbol{x}}(t) = \boldsymbol{A}(t)\boldsymbol{x}(t) + \boldsymbol{B}(t)\boldsymbol{u}(t), \quad \boldsymbol{x}(t_0) = \boldsymbol{x}_0
+> $$
+>
+> $$
+> \boldsymbol{x} \in \mathbb{R}^n,\ \boldsymbol{u} \in \mathbb{R}^r,\ \boldsymbol{A}(t)\in \mathbb{R}^{n \times n},\ \boldsymbol{B}(t)\in \mathbb{R}^{n \times r}
+> $$
+>
+> $$
+> J = \frac{1}{2} \int_{t_0}^{\infty} \left[ \boldsymbol{x}^\top(t)\boldsymbol{Q}(t)\boldsymbol{x}(t) + \boldsymbol{u}^\top(t)\boldsymbol{R}(t)\boldsymbol{u}(t) \right] \text{d}t
+> $$
+>
+> $$
+> \boldsymbol{u}^*(t)=\arg \min_u J
+> $$
+>
 
-*注：工程上所关心的另一类更广泛的问题时：除保证有限时间内系统的**非零初态响应最优性**之外，还要求系统具有**保持平衡状态**的能力；既有**最优性要求**又有**稳定性要求**。此时如果将调节器问题推广到无限时间的情况，就可以在无限时间内既考察**实际上有限时间内的响应**，又考察**系统的稳定性**。
+#### （3）无限时间的线性最优调节器
 
-$$
-\dot{\boldsymbol{x}}(t) = \boldsymbol{A}(t)\boldsymbol{x}(t) + \boldsymbol{B}(t)\boldsymbol{u}(t), \quad \boldsymbol{x}(t_0) = \boldsymbol{x}_0
-$$
+与有限时间调节器的主要差别在于 $t_f$ 改为 $\infty$ 。
 
-$$
-\boldsymbol{x} \in \mathbb{R}^n,\ \boldsymbol{u} \in \mathbb{R}^r,\ \boldsymbol{A}(t)\in \mathbb{R}^{n \times n},\ \boldsymbol{B}(t)\in \mathbb{R}^{n \times r}
-$$
+#### （4）定常线性最优调节器
 
-$$
-J = \frac{1}{2} \int_{t_0}^{\infty} \left[ \boldsymbol{x}^\top(t)\boldsymbol{Q}(t)\boldsymbol{x}(t) + \boldsymbol{u}^\top(t)\boldsymbol{R}(t)\boldsymbol{u}(t) \right] \text{d}t
-$$
+$\boldsymbol{Q}\in \mathbb{R}^{n\times n}$，$\boldsymbol{R}\in\mathbb{R}^{r\times r} >0$均为常值对称矩阵，此时存在唯一的最优控制：$\boldsymbol{u}^*(t)=-\boldsymbol{R}^{-1}(t)\boldsymbol{B}^\top \boldsymbol{P}\boldsymbol{x}(t)$
 
-$$
-\boldsymbol{u}^*(t)=\arg \min_u J
-$$
+## 2 LQR与LQG问题
 
-+ **无限时间的线性最优调节器**
-
-  与有限时间调节器的主要差别在于 $t_f$ 改为 $\infty$ 。
-
-  + **定常线性最优调节器**
-
-    $\boldsymbol{Q}\in \mathbb{R}^{n\times n}$，
-    $\boldsymbol{R}\in\mathbb{R}^{r\times r} >0$均为常值对称矩阵，此时存在唯一的最优控制：
-    $\boldsymbol{u}^*(t)=-\boldsymbol{R}^{-1}(t)\boldsymbol{B}^\top \boldsymbol{P}\boldsymbol{x}(t)$
-
-### 1.2 LQR设计
-
-[lqr](https://ww2.mathworks.cn/help/control/ref/lti.lqr.html)，[dlqr](https://ww2.mathworks.cn/help/control/ref/lti.dlqr.html)
+### 2.1 LQR设计
 
 MATLAB控制系统工具箱中提供了求解线性二次型（LQ）最优控制问题的函数及算法，其中 `lqr` 与 `lqry` 函数可直接求解定常连续系统LQR问题相关的Riccati代数方程。
 
-+ `lqr` 连续时间状态空间系统，无限时间定常状态调节器
+<img src="..\assets\LQR.png" width = 40% />
 
-  提供连续时间状态空间模型 $A,\ B$ 以及二次代价函数权重参数 $Q,\ R,\ N$，可通过求解连续时间Riccati方程来获取最优的状态反馈权重矩阵。
-+ `lqry` 连续时间状态空间系统，无限时间定常输出调节器
+|                             | 连续时间状态空间                                             | 离散时间状态空间                                             |
+| --------------------------- | :----------------------------------------------------------- | :----------------------------------------------------------- |
+| 无限时间定常 **状态**调节器 | [`[K,S,P] = lqr(sys,Q,R,N)`](https://ww2.mathworks.cn/help/control/ref/lti.lqr.html) <br />提供连续时间状态空间模型 $A,\ B$ 以及二次代价函数权重参数 $Q,\ R,\ N$，可通过求解连续时间Riccati方程来获取最优的状态反馈权重矩阵。 | [`[K,S,P] = dlqr(A,B,Q,R,N)`](https://ww2.mathworks.cn/help/control/ref/lti.dlqr.html) <br />提供离散时间状态空间模型 $A,\ B$ 以及二次代价函数权重参数 $Q,\ R,\ N$，可通过求解离散时间Riccati方程来获取最优的状态反馈权重矩阵。 |
+| 无限时间定常 **输出**调节器 | `[K,S,e] = lqry(sys,Q,R,N)` <br />提供连续时间状态空间模型 $A,\ B$ 以及二次代价函数权重参数 $Q,\ R,\ N$，可通过求解连续时间Riccati方程来获取最优的输出反馈权重矩阵。 | `[K,S,E] = dlqry(A,B,C,D,Q,R)`<br />                         |
 
-  提供连续时间状态空间模型 $A,\ B$ 以及二次代价函数权重参数 $Q,\ R,\ N$，可通过求解连续时间Riccati方程来获取最优的输出反馈权重矩阵。
-+ `dlqr` 离散时间状态空间系统，无限时间定常状态调节器
-
-  提供离散时间状态空间模型 $A,\ B$ 以及二次代价函数权重参数 $Q,\ R,\ N$，可通过求解离散时间Riccati方程来获取最优的状态反馈权重矩阵。
-
-### 1.3 LQE/Kalman Filter观测器设计
-
-[卡尔曼滤波](https://ww2.mathworks.cn/help/control/ug/kalman-filtering.html)
+### 2.2 LQE/Kalman Filter观测器设计
 
 <img src="..\assets\kalmdemo_02.png" width = 70% />
 $$
@@ -124,29 +92,26 @@ $$
 \end{align}
 $$
 
----
+为离散时间系统设计卡尔曼观测器（Kalman estimator）时，常用两类工具：一是直接求取稳态卡尔曼增益的函数（如 `dlqe`），二是基于整套噪声模型构造观测器模型的函数（如 `kalman`）。下面给出简要说明与使用建议：
 
-为离散时间系统构造Kalman状态观测器可选择以下不同的函数：
+|      | 离散时间状态空间                                             | 选择建议                                                     |
+| ---- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+|      | `[M,P,Z,E] = dlqe(A,G,C,Q,R)`（离散时间卡尔曼滤波增益求解）<br />直接求解离散时间稳态卡尔曼滤波器的增益矩阵 M（等价于连续情况下的 LQE），适合系统已用状态空间 (A,G,C) 明确给出、并且已知过程噪声协方差 `Q` 与测量噪声协方差 `R` 的情况。 | 若目标是快速得到卡尔曼增益并在自定义仿真代码中使用预测/更新公式，优先使用 `dlqe`（简单、直接）。 |
+|      | [`[kest,L,P] = kalman(sys,Qn,Rn,Nn)`](https://ww2.mathworks.cn/help/control/ug/kalman-filtering.html)（基于系统模型直接生成估计器对象）<br />给定带有输入/输出的被控对象 `sys` 以及噪声协方差信息，`kalman` 返回一个状态空间形式的估计器 `kest`，以及滤波增益 `L` 和协方差 `P`。`kest` 可以直接作为一个可连接的状态空间模块用于仿真或系统连接。 | 若目标是把估计器作为一个可重用的状态空间对象与被控系统拼接或在 Simulink 中直接使用，优先使用 `kalman`（返回 `kest` 更方便）。 |
 
-+ `dlqe`  Kalman estimator design for discrete-time systems.
+无论使用哪种5.方法，关键在于为过程噪声 `w` 与测量噪声 `v` 选取合适的协方差矩阵（`Q`/`Qn`、`R`/`Rn`），这直接影响滤波器对模型预测与测量的信任权重，从而影响估计收敛速度与稳态误差。
 
-  `[M,P,Z,E] = dlqe(A,G,C,Q,R)`  returns the gain matrix M such that the discrete, stationary Kalman filter with observation and time update equations produces an optimal state estimate x[n|n] of x[n] given y[n] and the past measurements.  The resulting Kalman estimator can be formed with DESTIM.
+### 2.3 用于调节问题的LQG设计
 
-+ `kalman`  Kalman filter design, Kalman estimator
+#### （1）分离式设计
 
-  `[kest,L,P] = kalman(sys,Qn,Rn,Nn)` This MATLAB function creates a state-space model kest of the Kalman estimator given the plant model sys and the noise covariance data Qn, Rn, Nn (matrices Q, R, N described in Description).
-
-### 1.4 用于调节问题的LQG设计
-
-[线性二次高斯 (LQG) 设计](https://ww2.mathworks.cn/help/control/getstart/linear-quadratic-gaussian-lqg-design.html)
-
-线性二次高斯（Linear Quadratic Gaussian）控制是一种用于设计伺服控制器的现代状态空间方法，允许我们权衡调节/过程扰动和测量噪声。LQR与Kalman Filter的设计可使用分离性原理，LQG控制设计遵循以下步骤：
+[线性二次高斯（Linear Quadratic Gaussian）控制](https://ww2.mathworks.cn/help/control/getstart/linear-quadratic-gaussian-lqg-design.html)是一种用于设计伺服控制器的现代状态空间方法，允许我们权衡调节/过程扰动和测量噪声。LQR与Kalman Filter的设计可使用分离性原理，LQG控制设计遵循以下步骤：
 
 1. 构造LQ最优增益；
 2. 构造Kalman Filter/状态估计器；
 3. 通过连接LQ最优增益与Kalman Filter构建LQG设计。
 
-<img src="..\assets\regulator.png" width = 60% />
+<img src="..\assets\regulator.png" width = 50% />
 $$
 \begin{align}
     x(k+1)=&Ax(k)+Bu(k)+Gw(k)\\
@@ -161,15 +126,15 @@ $$
 
 ---
 
+#### （2）一步到位式设计
+
 基于 `lqg` 函数的一步到位的快速设计方法，需满足以下条件：
-
-<img src="..\assets\lqg1.png" width =50% />
-
-
 
 - 需要最优的 LQG 控制器，并且 $\mathbb{E}(wv^\top)$ 或 $H$ 为非零值。
 - 所有已知（确定性）输入均为控制输入，所有输出均为测得值。
 - 积分器状态的加权独立于被控对象的状态和控制输入。
+
+<img src="..\assets\lqg1.png" width =40% />
 
 被控系统为：
 $$
@@ -187,23 +152,17 @@ J=\mathbb{E}\{\lim_{\tau\rightarrow\infty}\cfrac{1}{\tau}\int_0^\tau \left([x^\t
 x_i=\int(r-y)
 $$
 
----
+**注意**：若需要引入更多的设计灵活性以设计LQG调节器应当使用 `lqr` ， `kalman` 和 `lqgreg` 指令，代替`lqg`设计
 
-若需要引入更多的设计灵活性以设计LQG调节器应当使用 `lqr` ， `kalman` 和 `lqgreg` 指令，相应的条件如下：
+## 3 带限噪声生成
 
-+ 可任意指定过程噪声矩阵G和测量噪声矩阵H
-+ 可存在非控制输入的确定性干扰或未测量输出
-+ 支持对积分器状态、系统状态和控制量的差异化加权
-
-## 2 带限噪声生成
-
-### 2.1 实验内容
+### 3.1 实验内容
 
 1. 设置实验采取的采样频率（Hz），带通滤波器的高低截止频率（Hz），带通滤波器类型以及滤波器阶次，使用MATLAB函数设计带通滤波器；程序选用了常规的butterworth滤波器，根据选取的归一化频率，使用 `butter` 函数生成了相应的数字滤波器，输出结果为冲激响应函数/传递函数系数（离散时间模型）。
 2. 使用 `tf2ss` 函数将上面得到的传递函数转换为相应的状态空间模型（不区分离散/连续）；
 3. 输入信号选取全频带白噪声，状态空间模型仿真得到相应的带限噪声输出。
 
-### 2.2 实验结果
+### 3.2 实验结果
 
 * 绘制所生成带限噪声的时域波形，使用fft函数分析其频谱（幅度谱），验证频率范围与所设范围一致；
 * 绘制所涉及的带通滤波器的Bode幅频曲线，以及最终所生成噪声的pwelch功率谱密度函数曲线，验证频率范围与所设范围一致。
@@ -223,16 +182,16 @@ w(k)=&C_w x_w(k)
 \end{align}
 $$
 
-## 3 ARMAX次级通路辨识
+## 4 ARMAX次级通路辨识
 
-### 3.1 实验内容
+### 4.1 实验内容
 
 1. 设置实验采取的采样频率（Hz），带通滤波器的高低截止频率（Hz），带通滤波器类型以及滤波器阶次，使用MATLAB函数设计带通滤波器；参考MATLAB的ActiveNoiseCancellation示例程序，选用了Chebyshev II型滤波器，输出结果为传递函数。
 2. 输入信号选取全频带白噪声，使用上述带通滤波器（次级通路）滤波，得到辨识所需的输入、输出信号序列。
 3. 设定ARMAX模型的阶次以及延迟，使用 `iddata` 以及 `armax` 函数辨识，`polydata` 函数提取多项式系数。并绘制系列图像验证辨识效果。
 4. 使用 `tf2ss` 函数，将传递函数模型转换为状态空间模型。并绘制系列图像验证辨识、状态空间模型的频率响应是否等价。
 
-### 3.2 实验结果
+### 4.2 实验结果
 
 * 绘制所生成带限噪声的时域波形，使用fft函数分析其频谱（幅度谱），验证频率范围与所设范围一致；
 * 绘制所涉及的带通滤波器的Bode幅频曲线，以及最终所生成噪声的pwelch功率谱密度函数曲线，验证频率范围与所设范围一致。
@@ -252,15 +211,9 @@ y(k)=&C x(k)+Du(k)+Fw(k)
 \end{align}
 $$
 
-### 3.3 基于系统辨识工具箱
+## 5 基于LQR/LQG的主动控制
 
-[利用Simulink实现系统模型辨识-连续扫频 - 知乎](https://zhuanlan.zhihu.com/p/598926217)
-
-[MATLAB系统辨识工具箱（ARMAX模型） - 知乎](https://zhuanlan.zhihu.com/p/568419600)
-
-## 4 基于LQR/LQG的主动控制
-
-### 4.0 理论说明
+### 5.0 理论说明
 
 LQR具有很好的稳定裕度，但在和Kalman Filter组成LQG之后，闭环系统的稳定裕度不复存在。
 
@@ -268,13 +221,13 @@ LQG系统虽然是“最优”的，担现实中极易因为建模误差和扰�
 
 为了解决LQG的鲁棒稳定性差的问题，有人在LQG的基础上提出了LTR（回路传递恢复）作为补充，通过频域分析，设计闭环零极点位置，从而保证了系统的鲁棒稳定性。也有人干脆放弃LQG，发展出了其他鲁棒控制算法，如H∞。
 
-### 4.1 ANC问题制定
+### 5.1 ANC问题制定
 
 反馈控制结构的主动噪声控制问题本质上是控制中的调节问题（regulation），可以使用LQG控制器实现。
 
 <img src="..\assets\LQGdemo.png" width = 60% />
 
-### 4.2 增广系统模型
+### 5.2 增广系统模型
 
 $$
 \begin{bmatrix}
@@ -296,7 +249,7 @@ B\\ 0
 $$
 
 $$
-y(k) = 
+y(k) =
 \begin{bmatrix}
 C& FC_w
 \end{bmatrix}
@@ -314,10 +267,10 @@ y(k)=&\tilde{C}\tilde{x}+v(k)
 \end{align}
 $$
 
-+ LQR： $u(k)=-K\tilde{x}(k)$ 
-+ Kalman Filter： $\tilde{x}(k+1)=\tilde{A}\tilde{x}(k)+\tilde{B}u(k)+L(y(k)-\tilde{C}x(k))+Lv(k)$ 
++ LQR： $u(k)=-K\tilde{x}(k)$
++ Kalman Filter： $\tilde{x}(k+1)=\tilde{A}\tilde{x}(k)+\tilde{B}u(k)+L(y(k)-\tilde{C}x(k))+Lv(k)$
 
-### 4.3 LQR+LQE设计
+### 5.3 LQR+LQE设计
 
 #### （1）LQR设计
 
@@ -356,19 +309,21 @@ Rn = 1e-10 * eye(size(C, 1));  % 测量噪声协方差
 
 <img src="..\assets\LQGdemo1.svg" width = 60% />
 
-### 4.4 直接LQG设计（一步到位）
+### 5.4 直接LQG设计（一步到位）
 
-`lqg` 函数一步到位设计仅适用于常规的状态反馈控制，不适用于输出调节问题。
+在`LQGdemo2.m`中尝试使用`lqg`函数一步到位完成控制器设计，而不是同上面那样使用两步设计。然而这两种设计策略存在本质差异，`dlqr`返回的是一个**静态状态反馈矩阵** $K$，`dlqe`返回的是**静态卡尔曼增益** $L$。而`lqg`直接返回一个动态控制器。
 
-<font color = red>调节问题可看作r=0的伺服问题，那么lqg能否间接用于输出调节？</font>
+`lqg` 函数一步到位设计仅适用于常规的状态反馈控制，如果将调节问题可看作r=0的伺服问题，那么lqg能否间接用于输出调节。
 
-### 4.5 基于Simulink的仿真
+尽管在代码中设置了`InputGroup`，但在某些MATLAB版本或上下文中，`lqg`函数如果没有正确识别输入分组，就会默认**将系统所有的输入（这里是2个）都当作控制输入**。此时，系统有 16 个状态 + 2 个输入 = 18 维向量，因此它强行要求你的权重矩阵 QXU 必须是$18\times 18$ 的。而我们提供的 QXU 是针对 1 个控制输入的 ($16+1=17$)，所以报错。
+
+在当前版本的程序中提供了两种方案，首先使用构造函数直接定义分组；如果 lqg 函数依然因版本问题报错，我们可以使用 `lqr` + `kalman` + `lqgreg` 组合。这三步是 `lqg` 函数的底层实现，完全等价但不会有歧义问题。
+
+### 5.5 基于Simulink的仿真
 
 <img src="..\assets\simLQG.png" width=80% />
 
-
-
-## 5 不足与改进建议
+## 6 不足与改进建议
 
 1. 所生成的传递函数究竟是连续复频域传递函数还是离散复频域传函？所生成的状态空间矩阵属于连续时间模型还是离散时间模型？仍有待理论说明。
 2. 未对多种条件作重复试验，实验条件特殊，且设置比较随意，不确定推广到其它数据是否适用。
@@ -377,11 +332,11 @@ Rn = 1e-10 * eye(size(C, 1));  % 测量噪声协方差
 3. 未讨论LQR主动控制的局限性，未说明为什么要引入LQG；未探究LQR与LQG反馈控制的带宽限制。
 4. 对于LQR，LQG设计的参数（权重矩阵选取）未提供理论参考，未探究超出建议值会发生什么
 
-### 5.1 带限噪声的作用
+### 6.1 带限噪声的作用
 
-### 5.2 辨识方法的选取
+### 6.2 辨识方法的选取
 
-### 5.3 控制方法的限制
+### 6.3 控制方法的局限性
 
 ## 参考资料
 

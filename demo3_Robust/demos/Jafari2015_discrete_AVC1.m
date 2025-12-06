@@ -1,14 +1,6 @@
 %% 未知周期干扰的主动悬架鲁棒性与性能分析（Jafari, Ioannou,et al. 2015）
-%% 1 被控系统建模
-% 考虑以下三阶模型：$G_0(z) = \frac{-0.00146(z - 0.1438)(z - 1)}{(z - 0.7096)(z^2 - 0.04369z 
-% + 0.01392)}$
-% 
-% 离线设计控制器理论上能够完全拒绝干扰的周期性部分：
-%% 
-% * $d_s$ 是幅度为1的单频正弦信号，$v$ 是均值为零、标准差为0.02且 $|v| \leq 0.1$ 的高斯噪声。
-% * 采样周期 $T_s = 1/480 \text{sec}$
-
 clear; close all; clc;
+%% 1 被控系统建模
 addpath('..\..\functions');
 % 离散系统G0(z)
 Ts = 1/480;
@@ -218,6 +210,7 @@ rms_mosek = rms(y_mosek(20*fs:end));  % MOSEK控制后RMS
 fprintf('\n--- MOSEK控制器性能统计 ---\n');
 fprintf('扰动信号RMS: %.4f\n', rms_d);
 fprintf('MOSEK控制后RMS: %.4f (抑制 %.1f dB)\n', rms_mosek, 20*log10(rms_d/rms_mosek));
+
 %% 5 自适应仿真分析 (基于Jafari2015论文结构)
 N = 25;
 % ---------- 1. 定义自适应滤波器F(z) ----------
@@ -379,3 +372,156 @@ fprintf('扰动信号RMS: %.4f\n', rms_d);
 fprintf('固定MOSEK控制RMS: %.4f (抑制 %.1f dB)\n', rms_mosek_final, 20*log10(rms_d/rms_mosek_final));
 fprintf('自适应控制RMS: %.4f (抑制 %.1f dB)\n', rms_adapt_final, 20*log10(rms_d/rms_adapt_final));
 fprintf('自适应相对固定控制器改善: %.1f dB\n', 20*log10(rms_mosek_final/rms_adapt_final));
+
+%% Reproduction of Jafari et al. 2015 - FINAL STRUCTURAL TEST: Removing G0(z) from Regressor Phi
+
+clear; close all; clc;
+
+%% 1. 系统定义 (System Definition)
+Ts = 1/480;
+z = tf('z', Ts);
+
+% G0(z) - 确保修正 (z+1)
+G0_tf = (-0.00146*(z-0.1438)*(z+1)) / ((z - 0.7096)*(z^2 - 0.04369*z + 0.01392));
+[num0, den0] = tfdata(G0_tf, 'v');
+
+% G_true = G0 * (1 + Delta_m)
+Delta_m = -0.0002 / (z + 0.99)^2;
+G_true_tf = G0_tf * (1 + Delta_m);
+[num_true, den_true] = tfdata(G_true_tf, 'v');
+
+%% 2. 仿真参数设置 (Simulation Setup)
+T_end = 50;
+fs = 1/Ts;
+Nsim = T_end * fs;
+t = (0:Nsim-1)' * Ts;
+
+% RLS/控制器参数 (Paper values)
+N = 50;
+tau0 = 10;
+c0 = 1;   
+P0 = 500 * eye(N); 
+theta_max = 10;
+lambda = 0.9995;  
+
+% 干扰信号构建 (Disturbance)
+d_part1 = 0.7*sin(25*t + pi/3) + 0.5*sin(225*t + pi/4);
+d_add = 0.6*sin(85*t - pi/6) + 0.4*sin(125*t + pi/2);
+idx_30s = find(t >= 30, 1);
+d_total = d_part1;
+d_total(idx_30s:end) = d_total(idx_30s:end) + d_add(idx_30s:end);
+rng(42);
+v = 0.02 * randn(Nsim, 1);
+v = max(min(v, 0.1), -0.1); 
+d_total = d_total + v;
+
+%% 3. 初始化变量 (Initialization)
+y = zeros(Nsim, 1);
+u = zeros(Nsim, 1);
+zeta = zeros(Nsim, 1);  
+psi = zeros(Nsim, 1);   
+
+theta = zeros(N, 1);    
+P = P0;
+
+% 滤波器状态初始化
+state_plant = zeros(max(length(den_true), length(num_true)) - 1, 1);
+state_G0_zeta = zeros(max(length(den0), length(num0)) - 1, 1);
+state_G0_psi = zeros(max(length(den0), length(num0)) - 1, 1);
+
+buffer_zeta = zeros(N, 1); 
+buffer_psi  = zeros(N, 1);
+u_prev = 0; 
+
+fprintf('Starting Final Structural Test (Phi = tau0 * w, G0 removed)...\n');
+
+%% 4. 逐点仿真循环 (Sample-by-Sample Loop)
+for k = 1:Nsim
+    
+    % --- 1. 物理对象演化 (Physical Plant) ---
+    [y_no_d, state_plant] = filter(num_true, den_true, u_prev, state_plant);
+    y(k) = y_no_d + d_total(k);
+    
+    % --- 2. 信号处理 ---
+    [y_hat, state_G0_zeta] = filter(num0, den0, u_prev, state_G0_zeta);
+    zeta(k) = y(k) - y_hat;
+    
+    % *** NOTE: psi(k) = G0[zeta](k) is CALCULATED but NOT USED for PHI ***
+    [psi_val, state_G0_psi] = filter(num0, den0, zeta(k), state_G0_psi);
+    psi(k) = psi_val;
+    
+    % --- 3. 自适应控制 (Adaptive Control) ---
+    u_current = 0;
+    
+    if t(k) >= 10 
+        
+        % A. 构建 Regressors (Phi and W) 
+        w_vec = flipud(buffer_zeta);         
+        phi_vec = tau0 * w_vec; % <--- STRUCTURAL CORRECTION: Phi is just scaled w
+        
+        % B. Robust RLS Update (Eq 12) 
+        pred_err = zeta(k) - theta' * phi_vec; 
+        m2 = 1 + c0 * (phi_vec' * phi_vec);
+        
+        % Calculate Gain K(k)
+        P_phi = P * phi_vec; 
+        denom = lambda * m2 + phi_vec' * P_phi; 
+        K_gain = P_phi / denom; 
+
+        % Parameter Update (theta(k) = theta(k-1) + K(k) * e(k))
+        theta_new = theta + K_gain * pred_err; 
+
+        % Covariance Update P(k) 
+        P = (1/lambda) * (P - K_gain * P_phi'); 
+
+        % Projection (Robustness)
+        if norm(theta_new) > theta_max
+            theta_new = theta_new * (theta_max / norm(theta_new));
+        end
+        theta = theta_new;
+        
+        % C. 计算控制律 u(k) (Eq 10)
+        u_current = -tau0 * (theta' * w_vec);
+        
+        if abs(u_current) > 10
+            u_current = 10 * sign(u_current);
+        end
+        
+    end
+    
+    u(k) = u_current;
+    
+    % --- 4. 更新历史寄存器 (Update Registers for next step k+1) ---
+    u_prev = u(k);
+    buffer_psi = [psi(k); buffer_psi(1:end-1)];
+    buffer_zeta = [zeta(k); buffer_zeta(1:end-1)];
+    
+end
+
+%% 5. 绘图与性能计算 (Visualization and Performance)
+
+figure('Color', 'w', 'Position', [100 100 1000 600]);
+
+subplot(2,1,1);
+plot(t, d_total, 'Color', [0.7 0.7 0.7], 'DisplayName', 'Disturbance'); hold on;
+plot(t, y, 'b', 'LineWidth', 1.0, 'DisplayName', 'Output y');
+xline(10, 'g--', 'Control ON', 'LineWidth', 1.5);
+xline(30, 'r--', 'New Disturbance', 'LineWidth', 1.5);
+ylabel('Amplitude'); title('System Output vs Disturbance (Figure 4 Reproduction)');
+legend; grid on; xlim([0 50]); ylim([-2 2]);
+
+subplot(2,1,2);
+plot(t, u, 'r', 'LineWidth', 1.0);
+xline(10, 'g--', 'Control ON');
+xline(30, 'r--', 'New Disturbance');
+ylabel('Control Input u'); xlabel('Time (s)');
+grid on; xlim([0 50]); ylim([-10 10]);
+
+% RMS Calculation
+idx1 = (t > 20 & t < 30); idx2 = (t > 40 & t < 50);
+rms_d1 = rms(d_total(idx1)); rms_y1 = rms(y(idx1)); att1 = 20*log10(rms_y1/rms_d1);
+rms_d2 = rms(d_total(idx2)); rms_y2 = rms(y(idx2)); att2 = 20*log10(rms_y2/rms_d2);
+
+fprintf('--- Performance Results ---\n');
+fprintf('Period 1 (20-30s): Disturbance RMS=%.3f, Output RMS=%.3f, Attenuation=%.2f dB\n', rms_d1, rms_y1, att1);
+fprintf('Period 2 (40-50s): Disturbance RMS=%.3f, Output RMS=%.3f, Attenuation=%.2f dB\n', rms_d2, rms_y2, att2);
