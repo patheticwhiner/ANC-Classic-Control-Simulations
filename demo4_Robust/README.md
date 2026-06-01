@@ -1,0 +1,77 @@
+# demo4_Robust — 基于 ε-MOPSO 的 RST 控制器参数整定
+
+## 概述
+
+本目录实现了基于 **ε-MOPSO**（ε-多目标粒子群优化）算法的 RST 数字控制器自动整定框架。核心思想：将灵敏度函数整形问题转化为多目标优化，利用 Zames-Francis 积分等式构建目标函数，通过 ε-MOPSO 搜索满足频域约束（模值裕度、延迟裕度）的最优 X/Y 多项式零点，最终通过 Bezout 方程反解 R/S/T 控制器多项式。
+
+## 目录结构
+
+| 文件 | 类型 | 说明 |
+|------|------|------|
+| `run_RST_eMOPSO.m` | 主脚本 | 配置系统模型 → 运行 ε-MOPSO → 可视化 Pareto 前沿 → 保存结果 |
+| `benchmark_MOEAs.m` | 分析脚本 | ε 值与种群大小的参数敏感性分析 |
+| | | |
+| `eMOPSO_core.m` | 算法核心 | ε-MOPSO 多目标粒子群优化（ε-支配、Box 索引、Archive 维护） |
+| `RST_objective.m` | 目标函数 | Zames-Francis 积分匹配误差 + Bezout 残差（3 目标） |
+| `RST_constraints.m` | 约束函数 | 频域模值裕度与延迟裕度上下界 |
+| `penalty_function.m` | 惩罚函数 | 将约束违例映射为增广目标值 |
+| `postprocess_RST.m` | 后处理 | 从优化结果反解 R/S/T 控制器并仿真验证 |
+| `testFunctions.m` | 测试函数 | 标准多目标测试函数（F1-F4）用于算法验证 |
+| | | |
+| `PSO_Foundations.md` | 📖 入门教程 | PSO 从零基础到 ε-MOPSO 的完整数学推导（含定理证明） |
+| `RST_eMOPSO_spec.md` | 规范文档 | 数学建模与算法规范 |
+| `MOEA_algorithms.md` | 算法手册 | 四种 MOEA 算法（MOPSO/ε-MOPSO/NSGA-II/MODE）详解 |
+| `Solution.md` | 推导文档 | RST 优化问题的案例推导 |
+| `README.md` | 本文件 | 目录说明 |
+| | | |
+| `run_log.txt` | 日志 | 最近一次运行的 MATLAB 控制台输出 |
+| `RST_eMOPSO_results.mat` | 数据 | ε-MOPSO 优化结果（Archive、Pareto 前沿、选定解） |
+
+## 阅读路径
+
+初学者建议按以下顺序阅读：
+
+1. 📖 **[PSO_Foundations.md](PSO_Foundations.md)** — 从优化问题建模 → 标准 PSO → 收敛性定理证明 → MOPSO → ε-MOPSO 的完整数学推导
+2. 📋 **[MOEA_algorithms.md](MOEA_algorithms.md)** — 四种算法（MOPSO / ε-MOPSO / NSGA-II / MODE）的横向对比与伪代码
+3. 📐 **[RST_eMOPSO_spec.md](RST_eMOPSO_spec.md)** — RST 控制器整定的数学建模与 ε-MOPSO 算法规范
+4. 🔬 **[Solution.md](Solution.md)** — 柔性传动系统案例的完整推导（物理模型 → 优化命题 → 控制器反解）
+5. 💻 **[README.md](README.md)**（本文件）— 代码使用手册
+
+## 快速开始
+
+1. 在 MATLAB 中将工作目录设为 `demo4_Robust/`
+2. 将 `functions/` 添加到路径：`addpath('../functions')`
+3. 运行主仿真：`run('run_RST_eMOPSO')`
+4. 查看结果：生成的 `RST_eMOPSO_results.mat` 包含最优解
+
+### 仿真参数
+
+| 参数 | 值 | 说明 |
+|------|-----|------|
+| 被控对象 | `G(z) = z⁻¹·(0.2+0.15z⁻¹)/(1−1.2z⁻¹+0.45z⁻²)` | 离散二阶系统，极点 0.6±0.3i |
+| 主导极点 | ζ=0.8, ωₙ=0.25π | 期望闭环动态 |
+| H_R | `1+z⁻¹` | 控制器分子固定因子 |
+| H_S | `1−z⁻¹` | 控制器分母固定因子（积分作用） |
+| 种群大小 | 40 | ε-MOPSO 粒子数 |
+| 最大迭代 | 80 | 优化终止代数 |
+| ε 值 | 0.02 | ε-支配精度 |
+| 目标数 | 3 | 零点匹配 + 延迟积分 + Bezout 残差 |
+
+### 预期结果
+
+- **闭环稳定**：最大极点模值 < 0.95
+- **控制器可实现**：R、S 多项式根均在单位圆内
+- **Bezout 残差**：≈ 0（闭环极点精确匹配设计值）
+- **运行时间**：< 20 秒（Intel i7 / 40 粒子 × 80 迭代）
+
+## 依赖
+
+- MATLAB R2020b 或更高版本
+- 项目 `functions/` 目录下的工具函数（`bezoutd.m`、`trimPolynomial.m` 等）
+- Signal Processing Toolbox（`freqz` 用于频域计算）
+
+## 参考
+
+- Zames, G. and Francis, B.A., "Feedback, minimax sensitivity, and optimal robustness", IEEE TAC, 1983
+- Laumanns, M. et al., "Combining Convergence and Diversity in Evolutionary Multiobjective Optimization", Evolutionary Computation, 2002
+- Landau, I.D. et al., "Digital Control Systems: Design, Identification and Implementation", Springer, 2005

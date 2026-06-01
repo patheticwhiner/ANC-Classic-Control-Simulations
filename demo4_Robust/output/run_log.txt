@@ -1,0 +1,297 @@
+====== 最终验证仿真 ======
+========== 被控对象模型 ==========
+A(z^{-1}) = +1.0000 z^{-0} -1.2000 z^{-1} +0.4500 z^{-2} 
+B(z^{-1}) = +0.2000 z^{-0} +0.1500 z^{-1} 
+延迟步数 d = 1, 采样时间 Ts = 1.0000
+
+注意: 系统无不稳定零点 (最小相位系统)。
+将使用默认虚拟零点 β_virtual = 1e6 以保证目标函数维度一致。
+注意: 系统无不稳定极点 (开环稳定系统)。
+
+========== 系统零极点分析 ==========
+不稳定零点 (|z|>1): 1 个
+  β_1 = 1000000.0000 + 0.0000i, |β_1| = 1000000.0000
+不稳定极点 (|z|>1): 1 个
+  α_1 = 1.0001 + 0.0000i, |α_1| = 1.0001
+
+========== 主导极点配置 ==========
+ζ = 0.80, ω_n = 0.79 rad/sample
+P_D(z^{-1}) = 1 + -0.9507 z^{-1} + 0.2846 z^{-2}
+P_D 极点: 0.4753 ± 0.2422i
+
+========== 控制器预设参数 ==========
+H_R(z^{-1}) = +1.0000 z^{-0} +1.0000 z^{-1} 
+H_S(z^{-1}) = +1.0000 z^{-0} -1.0000 z^{-1} 
+X 多项式阶数 nX = 2
+Y 多项式阶数 nY = 3
+
+========== ε-MOPSO 参数配置 ==========
+决策变量维度: 5
+目标函数数量: 3
+种群大小: 40
+最大迭代: 80
+ε 值: 0.0200
+搜索空间: [-0.95, 0.95]
+
+========== 开始优化 ==========
+[警告: 约束违例严重: avg_g1_max=0.014, avg_g2_max=4.717, delta=2.366] 
+[> 位置：penalty_function (第 96 行)
+位置: run_RST_eMOPSO>wrapped_objective (第 300 行)
+位置: run_RST_eMOPSO>@(theta)wrapped_objective(theta,sys_info) (第 187 行)
+位置: eMOPSO_core (第 94 行)
+位置: run_RST_eMOPSO (第 196 行)
+位置: run (第 112 行)] 
+[警告: 约束违例严重: avg_g1_max=0.013, avg_g2_max=8.216, delta=4.115] 
+[> 位置：penalty_function (第 96 行)
+位置: run_RST_eMOPSO>wrapped_objective (第 300 行)
+位置: run_RST_eMOPSO>@(theta)wrapped_objective(theta,sys_info) (第 187 行)
+位置: eMOPSO_core (第 94 行)
+位置: run_RST_eMOPSO (第 196 行)
+位置: run (第 112 行)] 
+=====================================================
+  ε-MOPSO 优化开始
+  种群大小: 40, 最大迭代: 80, ε: 0.0200
+=====================================================
+  迭代    1/80, Archive大小:   1
+[警告: 约束违例严重: avg_g1_max=0.011, avg_g2_max=1.271, delta=0.641] 
+[> 位置：penalty_function (第 96 行)
+位置: run_RST_eMOPSO>wrapped_objective (第 300 行)
+位置: run_RST_eMOPSO>@(theta)wrapped_objective(theta,sys_info) (第 187 行)
+位置: eMOPSO_core (第 141 行)
+位置: run_RST_eMOPSO (第 196 行)
+位置: run (第 112 行)] 
+[警告: 约束违例严重: avg_g1_max=0.000, avg_g2_max=1.537, delta=0.769] 
+[> 位置：penalty_function (第 96 行)
+位置: run_RST_eMOPSO>wrapped_objective (第 300 行)
+位置: run_RST_eMOPSO>@(theta)wrapped_objective(theta,sys_info) (第 187 行)
+位置: eMOPSO_core (第 141 行)
+位置: run_RST_eMOPSO (第 196 行)
+位置: run (第 112 行)] 
+[警告: 约束违例严重: avg_g1_max=0.009, avg_g2_max=2.419, delta=1.214] 
+[> 位置：penalty_function (第 96 行)
+位置: run_RST_eMOPSO>wrapped_objective (第 300 行)
+位置: run_RST_eMOPSO>@(theta)wrapped_objective(theta,sys_info) (第 187 行)
+位置: eMOPSO_core (第 141 行)
+位置: run_RST_eMOPSO (第 196 行)
+位置: run (第 112 行)] 
+[警告: 约束违例严重: avg_g1_max=0.011, avg_g2_max=1.126, delta=0.568] 
+[> 位置：penalty_function (第 96 行)
+位置: run_RST_eMOPSO>wrapped_objective (第 300 行)
+位置: run_RST_eMOPSO>@(theta)wrapped_objective(theta,sys_info) (第 187 行)
+位置: eMOPSO_core (第 141 行)
+位置: run_RST_eMOPSO (第 196 行)
+位置: run (第 112 行)] 
+  迭代   10/80, Archive大小:   1
+[警告: 约束违例严重: avg_g1_max=0.014, avg_g2_max=1.522, delta=0.768] 
+[> 位置：penalty_function (第 96 行)
+位置: run_RST_eMOPSO>wrapped_objective (第 300 行)
+位置: run_RST_eMOPSO>@(theta)wrapped_objective(theta,sys_info) (第 187 行)
+位置: eMOPSO_core (第 141 行)
+位置: run_RST_eMOPSO (第 196 行)
+位置: run (第 112 行)] 
+[警告: 约束违例严重: avg_g1_max=0.008, avg_g2_max=4.027, delta=2.018] 
+[> 位置：penalty_function (第 96 行)
+位置: run_RST_eMOPSO>wrapped_objective (第 300 行)
+位置: run_RST_eMOPSO>@(theta)wrapped_objective(theta,sys_info) (第 187 行)
+位置: eMOPSO_core (第 141 行)
+位置: run_RST_eMOPSO (第 196 行)
+位置: run (第 112 行)] 
+[警告: 约束违例严重: avg_g1_max=0.015, avg_g2_max=4.684, delta=2.350] 
+[> 位置：penalty_function (第 96 行)
+位置: run_RST_eMOPSO>wrapped_objective (第 300 行)
+位置: run_RST_eMOPSO>@(theta)wrapped_objective(theta,sys_info) (第 187 行)
+位置: eMOPSO_core (第 141 行)
+位置: run_RST_eMOPSO (第 196 行)
+位置: run (第 112 行)] 
+[警告: 约束违例严重: avg_g1_max=0.011, avg_g2_max=9.604, delta=4.807] 
+[> 位置：penalty_function (第 96 行)
+位置: run_RST_eMOPSO>wrapped_objective (第 300 行)
+位置: run_RST_eMOPSO>@(theta)wrapped_objective(theta,sys_info) (第 187 行)
+位置: eMOPSO_core (第 141 行)
+位置: run_RST_eMOPSO (第 196 行)
+位置: run (第 112 行)] 
+  迭代   20/80, Archive大小:   1
+[警告: 约束违例严重: avg_g1_max=0.008, avg_g2_max=1.405, delta=0.707] 
+[> 位置：penalty_function (第 96 行)
+位置: run_RST_eMOPSO>wrapped_objective (第 300 行)
+位置: run_RST_eMOPSO>@(theta)wrapped_objective(theta,sys_info) (第 187 行)
+位置: eMOPSO_core (第 141 行)
+位置: run_RST_eMOPSO (第 196 行)
+位置: run (第 112 行)] 
+[警告: 约束违例严重: avg_g1_max=0.011, avg_g2_max=1.169, delta=0.590] 
+[> 位置：penalty_function (第 96 行)
+位置: run_RST_eMOPSO>wrapped_objective (第 300 行)
+位置: run_RST_eMOPSO>@(theta)wrapped_objective(theta,sys_info) (第 187 行)
+位置: eMOPSO_core (第 141 行)
+位置: run_RST_eMOPSO (第 196 行)
+位置: run (第 112 行)] 
+[警告: 约束违例严重: avg_g1_max=0.007, avg_g2_max=1.660, delta=0.833] 
+[> 位置：penalty_function (第 96 行)
+位置: run_RST_eMOPSO>wrapped_objective (第 300 行)
+位置: run_RST_eMOPSO>@(theta)wrapped_objective(theta,sys_info) (第 187 行)
+位置: eMOPSO_core (第 141 行)
+位置: run_RST_eMOPSO (第 196 行)
+位置: run (第 112 行)] 
+[警告: 约束违例严重: avg_g1_max=0.009, avg_g2_max=2.486, delta=1.248] 
+[> 位置：penalty_function (第 96 行)
+位置: run_RST_eMOPSO>wrapped_objective (第 300 行)
+位置: run_RST_eMOPSO>@(theta)wrapped_objective(theta,sys_info) (第 187 行)
+位置: eMOPSO_core (第 141 行)
+位置: run_RST_eMOPSO (第 196 行)
+位置: run (第 112 行)] 
+[警告: 约束违例严重: avg_g1_max=0.011, avg_g2_max=1.154, delta=0.582] 
+[> 位置：penalty_function (第 96 行)
+位置: run_RST_eMOPSO>wrapped_objective (第 300 行)
+位置: run_RST_eMOPSO>@(theta)wrapped_objective(theta,sys_info) (第 187 行)
+位置: eMOPSO_core (第 141 行)
+位置: run_RST_eMOPSO (第 196 行)
+位置: run (第 112 行)] 
+[警告: 约束违例严重: avg_g1_max=0.005, avg_g2_max=1.949, delta=0.977] 
+[> 位置：penalty_function (第 96 行)
+位置: run_RST_eMOPSO>wrapped_objective (第 300 行)
+位置: run_RST_eMOPSO>@(theta)wrapped_objective(theta,sys_info) (第 187 行)
+位置: eMOPSO_core (第 141 行)
+位置: run_RST_eMOPSO (第 196 行)
+位置: run (第 112 行)] 
+[警告: 约束违例严重: avg_g1_max=0.011, avg_g2_max=1.625, delta=0.818] 
+[> 位置：penalty_function (第 96 行)
+位置: run_RST_eMOPSO>wrapped_objective (第 300 行)
+位置: run_RST_eMOPSO>@(theta)wrapped_objective(theta,sys_info) (第 187 行)
+位置: eMOPSO_core (第 141 行)
+位置: run_RST_eMOPSO (第 196 行)
+位置: run (第 112 行)] 
+[警告: 约束违例严重: avg_g1_max=0.006, avg_g2_max=1.892, delta=0.949] 
+[> 位置：penalty_function (第 96 行)
+位置: run_RST_eMOPSO>wrapped_objective (第 300 行)
+位置: run_RST_eMOPSO>@(theta)wrapped_objective(theta,sys_info) (第 187 行)
+位置: eMOPSO_core (第 141 行)
+位置: run_RST_eMOPSO (第 196 行)
+位置: run (第 112 行)] 
+[警告: 约束违例严重: avg_g1_max=0.007, avg_g2_max=1.370, delta=0.689] 
+[> 位置：penalty_function (第 96 行)
+位置: run_RST_eMOPSO>wrapped_objective (第 300 行)
+位置: run_RST_eMOPSO>@(theta)wrapped_objective(theta,sys_info) (第 187 行)
+位置: eMOPSO_core (第 141 行)
+位置: run_RST_eMOPSO (第 196 行)
+位置: run (第 112 行)] 
+[警告: 约束违例严重: avg_g1_max=0.001, avg_g2_max=1.685, delta=0.843] 
+[> 位置：penalty_function (第 96 行)
+位置: run_RST_eMOPSO>wrapped_objective (第 300 行)
+位置: run_RST_eMOPSO>@(theta)wrapped_objective(theta,sys_info) (第 187 行)
+位置: eMOPSO_core (第 141 行)
+位置: run_RST_eMOPSO (第 196 行)
+位置: run (第 112 行)] 
+[警告: 约束违例严重: avg_g1_max=0.015, avg_g2_max=4.156, delta=2.085] 
+[> 位置：penalty_function (第 96 行)
+位置: run_RST_eMOPSO>wrapped_objective (第 300 行)
+位置: run_RST_eMOPSO>@(theta)wrapped_objective(theta,sys_info) (第 187 行)
+位置: eMOPSO_core (第 141 行)
+位置: run_RST_eMOPSO (第 196 行)
+位置: run (第 112 行)] 
+[警告: 约束违例严重: avg_g1_max=0.012, avg_g2_max=1.037, delta=0.524] 
+[> 位置：penalty_function (第 96 行)
+位置: run_RST_eMOPSO>wrapped_objective (第 300 行)
+位置: run_RST_eMOPSO>@(theta)wrapped_objective(theta,sys_info) (第 187 行)
+位置: eMOPSO_core (第 141 行)
+位置: run_RST_eMOPSO (第 196 行)
+位置: run (第 112 行)] 
+  迭代   30/80, Archive大小:   1
+[警告: 约束违例严重: avg_g1_max=0.002, avg_g2_max=1.150, delta=0.576] 
+[> 位置：penalty_function (第 96 行)
+位置: run_RST_eMOPSO>wrapped_objective (第 300 行)
+位置: run_RST_eMOPSO>@(theta)wrapped_objective(theta,sys_info) (第 187 行)
+位置: eMOPSO_core (第 141 行)
+位置: run_RST_eMOPSO (第 196 行)
+位置: run (第 112 行)] 
+[警告: 约束违例严重: avg_g1_max=0.002, avg_g2_max=1.888, delta=0.945] 
+[> 位置：penalty_function (第 96 行)
+位置: run_RST_eMOPSO>wrapped_objective (第 300 行)
+位置: run_RST_eMOPSO>@(theta)wrapped_objective(theta,sys_info) (第 187 行)
+位置: eMOPSO_core (第 141 行)
+位置: run_RST_eMOPSO (第 196 行)
+位置: run (第 112 行)] 
+[警告: 约束违例严重: avg_g1_max=0.002, avg_g2_max=5.391, delta=2.697] 
+[> 位置：penalty_function (第 96 行)
+位置: run_RST_eMOPSO>wrapped_objective (第 300 行)
+位置: run_RST_eMOPSO>@(theta)wrapped_objective(theta,sys_info) (第 187 行)
+位置: eMOPSO_core (第 141 行)
+位置: run_RST_eMOPSO (第 196 行)
+位置: run (第 112 行)] 
+[警告: 约束违例严重: avg_g1_max=0.006, avg_g2_max=3.609, delta=1.807] 
+[> 位置：penalty_function (第 96 行)
+位置: run_RST_eMOPSO>wrapped_objective (第 300 行)
+位置: run_RST_eMOPSO>@(theta)wrapped_objective(theta,sys_info) (第 187 行)
+位置: eMOPSO_core (第 141 行)
+位置: run_RST_eMOPSO (第 196 行)
+位置: run (第 112 行)] 
+[警告: 约束违例严重: avg_g1_max=0.011, avg_g2_max=4.923, delta=2.467] 
+[> 位置：penalty_function (第 96 行)
+位置: run_RST_eMOPSO>wrapped_objective (第 300 行)
+位置: run_RST_eMOPSO>@(theta)wrapped_objective(theta,sys_info) (第 187 行)
+位置: eMOPSO_core (第 141 行)
+位置: run_RST_eMOPSO (第 196 行)
+位置: run (第 112 行)] 
+[警告: 约束违例严重: avg_g1_max=0.001, avg_g2_max=2.566, delta=1.283] 
+[> 位置：penalty_function (第 96 行)
+位置: run_RST_eMOPSO>wrapped_objective (第 300 行)
+位置: run_RST_eMOPSO>@(theta)wrapped_objective(theta,sys_info) (第 187 行)
+位置: eMOPSO_core (第 141 行)
+位置: run_RST_eMOPSO (第 196 行)
+位置: run (第 112 行)] 
+  迭代   40/80, Archive大小:   1
+[警告: 约束违例严重: avg_g1_max=0.006, avg_g2_max=4.003, delta=2.004] 
+[> 位置：penalty_function (第 96 行)
+位置: run_RST_eMOPSO>wrapped_objective (第 300 行)
+位置: run_RST_eMOPSO>@(theta)wrapped_objective(theta,sys_info) (第 187 行)
+位置: eMOPSO_core (第 141 行)
+位置: run_RST_eMOPSO (第 196 行)
+位置: run (第 112 行)] 
+[警告: 约束违例严重: avg_g1_max=0.014, avg_g2_max=7.882, delta=3.948] 
+[> 位置：penalty_function (第 96 行)
+位置: run_RST_eMOPSO>wrapped_objective (第 300 行)
+位置: run_RST_eMOPSO>@(theta)wrapped_objective(theta,sys_info) (第 187 行)
+位置: eMOPSO_core (第 141 行)
+位置: run_RST_eMOPSO (第 196 行)
+位置: run (第 112 行)] 
+[警告: 约束违例严重: avg_g1_max=0.004, avg_g2_max=1.267, delta=0.635] 
+[> 位置：penalty_function (第 96 行)
+位置: run_RST_eMOPSO>wrapped_objective (第 300 行)
+位置: run_RST_eMOPSO>@(theta)wrapped_objective(theta,sys_info) (第 187 行)
+位置: eMOPSO_core (第 141 行)
+位置: run_RST_eMOPSO (第 196 行)
+位置: run (第 112 行)] 
+  迭代   50/80, Archive大小:   1
+[警告: 约束违例严重: avg_g1_max=0.015, avg_g2_max=2.043, delta=1.029] 
+[> 位置：penalty_function (第 96 行)
+位置: run_RST_eMOPSO>wrapped_objective (第 300 行)
+位置: run_RST_eMOPSO>@(theta)wrapped_objective(theta,sys_info) (第 187 行)
+位置: eMOPSO_core (第 141 行)
+位置: run_RST_eMOPSO (第 196 行)
+位置: run (第 112 行)] 
+  迭代   60/80, Archive大小:   1
+  迭代   70/80, Archive大小:   1
+[警告: 约束违例严重: avg_g1_max=0.000, avg_g2_max=1.092, delta=0.546] 
+[> 位置：penalty_function (第 96 行)
+位置: run_RST_eMOPSO>wrapped_objective (第 300 行)
+位置: run_RST_eMOPSO>@(theta)wrapped_objective(theta,sys_info) (第 187 行)
+位置: eMOPSO_core (第 141 行)
+位置: run_RST_eMOPSO (第 196 行)
+位置: run (第 112 行)] 
+  迭代   80/80, Archive大小:   1
+=====================================================
+  ε-MOPSO 优化完成
+  最终Archive大小: 1
+=====================================================
+
+========== 优化完成 ==========
+耗时: 10.40 秒
+Pareto 前沿解数量: 1
+
+========== 选定最优解 ==========
+解索引: 1 (共 1 个 Pareto 解)
+目标函数值: 0.312238 0.314144 0.000000 
+决策变量 θ (前2个 X根, 后3个 Y根):
+  X roots = [0.4811 0.1049 ]
+  Y roots = [0.8648 0.2426 0.0312 ]
+
+结果已保存到: demo4_Robust/RST_eMOPSO_results.mat
