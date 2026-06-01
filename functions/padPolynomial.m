@@ -3,18 +3,20 @@ function poly_padded = padPolynomial(poly, target_length, str)
     % 输入：
     %   poly - 原始多项式系数向量
     %   target_length - 目标长度
+    %   str   - 可选, 'left' (左侧补零, 默认) 或 'right' (右侧补零)
     % 输出：
     %   poly_padded - 补零后的多项式系数向量
-    % str:
-    %   left - 在左侧补零
-    %   right - 在右侧补零
+    if nargin < 3
+        str = 'left';
+    end
     current_length = length(poly);
     if current_length < target_length
-        switch str
-            case "left"
-                poly_padded = [zeros(1, target_length - current_length), poly];
-            case "right"
-                poly_padded = [poly, zeros(1, target_length - current_length)];
+        if strcmp(str, 'left') || strcmp(str, "left")
+            poly_padded = [zeros(1, target_length - current_length), poly];
+        elseif strcmp(str, 'right') || strcmp(str, "right")
+            poly_padded = [poly, zeros(1, target_length - current_length)];
+        else
+            poly_padded = [zeros(1, target_length - current_length), poly];
         end
     else
         poly_padded = poly;
