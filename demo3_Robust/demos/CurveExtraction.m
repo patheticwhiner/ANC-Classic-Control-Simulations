@@ -4,7 +4,7 @@
 clear; clc; close all;
 
 %% 1. 读取并显示Bode图图片
-img = imread('img3.png');
+img = imread('BodeCurve_3.png');
 if size(img,3) == 3
     img_gray = rgb2gray(img);
 else

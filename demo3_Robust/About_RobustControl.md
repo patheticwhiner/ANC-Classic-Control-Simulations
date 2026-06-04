@@ -14,12 +14,20 @@
 demo3_Robust/
 ├── demos/ 存放一些用于调试的M脚本文件
 │   
-├── Bai1997.mlx 对白明宪1997年论文的仿真复现
-├── JafariJVC_continue.mlx  对Jafari&Ioannou JVC论文与专著中，连续系统部分的仿真复现
-├── JafariJVC_discrete.mlx  对Jafari&Ioannou JVC论文与专著中，离散系统部分的仿真复现
-├── JafariTAC_discrete_AVC.mlx  对Jafari&Ioannou 2015年TAC中，离散系统部分的仿真复现
-│   
-└── AboutRobust.md 此文档提供子目录下文件的说明
+├── Bai1997_Hinf.mlx 对白明宪1997年论文的仿真复现
+├── JafariJVC_Continuous.mlx  对Jafari&Ioannou JVC论文与专著中，连续系统部分的仿真复现
+├── JafariJVC_Discrete.mlx  对Jafari&Ioannou JVC论文与专著中，离散系统部分的仿真复现
+├── JafariTAC_DiscreteAVC.mlx  对Jafari&Ioannou 2015年TAC中，离散系统部分的仿真复现
+├── About_PeriodicSuppression.md  论文 Jafari&Ioannou 2015 JVC 阅读笔记
+├── About_MIMOAttenuation.md  论文 Jafari&Ioannou 2016 TAC 阅读笔记
+├── About_TVFeedback.md  论文 Jafari&Ioannou 2017 JVC 阅读笔记
+├── About_Book_RobustAdaptive.md  专著第6章鲁棒自适应衰减推导
+├── About_CC_Derivation.md  CC算法公式推导
+├── About_CC_Reproduction.md  CC算法复现笔记
+├── About_HinfSynthesis.md  H∞综合教程
+├── About_RobustControl.md  此文档提供子目录下文件的说明
+├── Jafari2015_RobustnessAdaptiveSuppression.pdf  Jafari&Ioannou 2015 论文原文
+├── JafariIoannou2016_RobustAdaptiveAttenuation.pdf  Jafari&Ioannou 2016 论文原文
 ```
 
 ### 理论关系总结
