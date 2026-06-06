@@ -56,6 +56,7 @@ legend show; grid on; %[output:721fdf16]
 %[text] ## 3 完整的数值仿真实验
 %[text] ### （1）问题设置
 clear; close all; clc;
+addpath('..\functions');
 %% 参数设置
 fs = 10000;              % 采样频率 [Hz]
 Ts = 1/fs;              % 采样周期
@@ -73,11 +74,11 @@ G = minreal(G0*(1+Delta)); % 实际模型
 %% 2. 扰动信号 d(t)
 % 固定频率分量
 A = [0.6 0.7];          % 幅值
-f = [70 187];           % Hz
-phi = [0 pi/3];         % 相位
+omega = [70, 187];      % rad/s (论文扰动频率)
+phi = [pi/4 pi/2];      % 相位
 d = zeros(1,Nsim);
 for k=1:length(A)
-    d = d + A(k)*sin(2*pi*f(k)*t + phi(k));
+    d = d + A(k)*sin(omega(k)*t + phi(k));
 end
 % 加入小随机噪声
 d = d + 0.02*randn(1,Nsim);
@@ -103,154 +104,117 @@ bodemag(F*G0); grid on; %[output:961046c4]
 %%
 %[text] ### （2）自适应控制器设计
 % K(s,theta) 参数化（简化成 FIR 滤波器）
-Nparam = 20;            % 参数个数 N >= 2*nf
-theta = zeros(Nparam,1);
-phi_reg = zeros(Nparam,1);
-y = zeros(Nparam,1);
+Nparam = 20;  lambda_val = 500;
+G1_d = c2d(tf(lambda_val,[1 lambda_val]), Ts, 'tustin');
+[numG1, denG1] = tfdata(G1_d, 'v');
+Gd_s  = c2d(G,  Ts, 'tustin'); [numGd_s,  denGd_s]  = tfdata(Gd_s,  'v');
+G0d_s = c2d(G0, Ts, 'tustin'); [numG0d_s, denG0d_s] = tfdata(G0d_s, 'v');
 
-%% 4. 自适应律参数
-P = eye(Nparam)*100;    % 初始协方差
-lambda = 0.99;          % 遗忘因子
+%% ====== 第1段: Lambda基 + Euler离散梯度 ======
+P_euler = eye(Nparam) * 500;  gamma0 = 1.0;  theta_max_val = 5;
+theta1 = zeros(Nparam, 1);
+nF  = max(length(numF), length(denF)) - 1;
+nG0 = max(length(numG0d_s), length(denG0d_s)) - 1;
+Lam_zf1=zeros(Nparam,1); phi_F_zf1=zeros(Nparam,nF); phi_G0_zf1=zeros(Nparam,nG0);
+G_zf1=zeros(max(length(numGd_s),length(denGd_s))-1,1); G0_zf1=zeros(nG0,1); F_zf1=zeros(nF,1);
+y1=zeros(1,Nsim); u1=zeros(1,Nsim); plant1=zeros(1,Nsim); z_hist1=zeros(1,Nsim);
+theta_hist1=zeros(Nparam,Nsim); P_tr1=zeros(1,Nsim);
 
-%% 5. 仿真循环
-for k = Nparam+1:Nsim %[output:group:9f2d0b97]
-    % F(s) 对扰动 d 的滤波
-    [uF_k, stateF] = filter(numF, denF, d(k), stateF);
+fprintf('===== Lambda+Euler =====\n');
+fprintf('N=%d, lambda=%.0f, theta_max=%.0f\n', Nparam, lambda_val, theta_max_val);
+fprintf('扰动: [%.0f, %.0f] rad/s\n', omega(1), omega(2));
+lam1=zeros(Nparam,1); phi1=zeros(Nparam,1);
 
-    % 自适应部分
-    phi_reg = -y(k-1:-1:k-Nparam);
-    u(k) = uF_k + theta.'*phi_reg;
-
-    % 系统响应
-    y(k) = lsim(c2d(G, Ts), u(k), [0 Ts]);  %[output:64d5c806]
-    y(k) = y(k) + d(k);
-
-    % 自适应律更新 (RLS)
-    eps_k = y(k);
-    K_gain = P*phi_reg/(lambda + phi_reg.'*P*phi_reg);
-    theta = theta - K_gain*eps_k;
-    P = (P - K_gain*phi_reg.'*P)/lambda;
-end %[output:group:9f2d0b97]
-
-%% 6. 绘图结果
-figure;
-plot(t,y); xlabel('Time [s]'); ylabel('Output y(t)');
-title('ANC with Adaptive Feedback');
-%%
-Gd = c2d(G0, Ts, 'tustin');
-[numG, denG] = tfdata(Gd, 'v');
-
-% ---------- 1. 定义自适应滤波器F(z) ----------
-% 见上面
-
-% ---------- 2. 初始化自适应仿真变量 ----------
-% 关键信号
-kz_adapt = zeros(1,Nsim);
-antinoise_term = zeros(1,Nsim);
-u_adapt = zeros(1,Nsim);
-y_adapt = zeros(1,Nsim);
-z_adapt = zeros(1,Nsim); % 观测信号 z = y - G0*u
-ep_adpat = zeros(1, Nsim);
-phi_hist = zeros(Nparam,1);    % 回归向量
-
-% 自适应参数
-theta_adapt = zeros(Nparam,1); % 参数初值为0
-P = eye(Nparam) * 500;         % 协方差矩阵 (初始值较大)
-gamma0 = 1;             % 归一化增益
-tau0 = 1;               % 增益
-
-% 历史缓冲区 (用于IIR滤波器)
-hist_len = max([length(denG), length(numG)]) + Nparam + 1;
-G0_u_hist = zeros(1, length(numG));
-G0_y_hist = zeros(1, length(denG));
-% 为回归向量的每个元素创建独立的滤波器历史
-phi_G0_u_hist = zeros(1, length(numG));
-phi_G0_y_hist = zeros(1, length(denG));
-phi_N = zeros(1, Nsim); % 监控 phi_N(k) = G0*z(k)
-F_u_hist = zeros(1, length(numF));
-F_y_hist = zeros(1, length(denF));
-
-% 监控变量
-theta_history = zeros(Nparam, Nsim);
-rms_history = zeros(1, Nsim);
-
-% ---------- 3. 自适应控制仿真循环 ----------
-% phi_adpat   N×1
-% theta_adpat N×1
-for k = hist_len:Nsim
-    % --- 步骤1: 计算系统输出 y(k) ---
-    % y(k) = G(u(k-1)) + d(k)，这里假设 G=G0
-    % 使用差分方程直接计算
-    antinoise_term(k) = (-denG(2:end)*antinoise_term(k-1:-1:k-length(denG)+1)' + numG*u_adapt(k-1:-1:k-length(numG))')/denG(1);
-    y_adapt(k) = antinoise_term(k) + d(k);
-    
-    if t(k) >= 4  % 20秒后开启自适应控制
-        % --- 步骤2: 计算观测信号 z(k) ---
-        % z(k) = y(k) - G0(u(k-1))
-        % G0(u(k-1))与上面计算的antinoise_term是同一个值
-        z_adapt(k) = y_adapt(k) - antinoise_term(k);
-
-        % --- 步骤3: 计算回归向量 phi(k) ---
-        % phi_i(k) = G0 * F * z(k-i)
-        [phi_N(k), phi_G0_u_hist, phi_G0_y_hist] = IIR_filter(numG, denG, z_adapt(k), phi_G0_u_hist, phi_G0_y_hist);
-        phi_hist = tau0*phi_N(k-(Nparam:-1:1)+1)'; % 取最近N个值构成回归向量
-
-        % --- 步骤4: 更新自适应参数 theta(k) ---
-        % 归一化RLS算法 (Normalized RLS)
-        m_s_squared = 1 + gamma0 * (phi_hist' * phi_hist);
-        epsilon = (z_adapt(k) - theta_adapt' * phi_hist) / m_s_squared;
-        ep_adapt(k) = epsilon;
-        P_phi = P * phi_hist;
-        denom = m_s_squared + phi_hist' * P_phi;
-        K = P_phi / denom; % 增益向量
-        P = P - (K * P_phi');
-        theta_adapt = theta_adapt + P * phi_hist * epsilon; % 使用未归一化的误差
-
-        % --- 步骤5: 计算控制信号 u(k) ---
-        % u(k) = -F * (theta(k)' * phi(k))
-        K_z_k = theta_adapt' * phi_hist;
-        kz_adapt(k) = K_z_k;
-        [u_adapt(k), F_u_hist, F_y_hist] = IIR_filter(-tau0 * numF, denF, K_z_k, F_u_hist, F_y_hist);
-    else
-        % 控制器关闭时，系统自由响应
-        z_adapt(k) = y_adapt(k); % z=y
-        u_adapt(k) = 0;
+for k = 2:Nsim
+    [y_G_k, G_zf1] = filter(numGd_s, denGd_s, u1(k-1), G_zf1);
+    plant1(k)=y_G_k; y1(k)=y_G_k+d(k);
+    [G0_u_k, G0_zf1] = filter(numG0d_s, denG0d_s, u1(k-1), G0_zf1);
+    z_k=y1(k)-G0_u_k; z_hist1(k)=z_k;
+    ys=z_k;
+    for stage=1:Nparam
+        [ys, Lam_zf1(stage)]=filter(numG1,denG1,ys,Lam_zf1(stage));
+        lam1(Nparam-stage+1)=ys;
     end
-    
-    % 记录历史数据
-    theta_history(:,k) = theta_adapt;
-    if k > fs
-        window_start = max(1, k - fs + 1);
-        rms_history(k) = rms(y_adapt(window_start:k));
+    for i=1:Nparam
+        [fo,phi_F_zf1(i,:)]=filter(numF,denF,lam1(i),phi_F_zf1(i,:)');
+        [phi1(i),phi_G0_zf1(i,:)]=filter(numG0d_s,denG0d_s,fo,phi_G0_zf1(i,:)');
+    end
+    m2=1+gamma0*(phi1.'*phi1); eps1=(z_k-theta1.'*phi1)/m2;
+    Pph=P_euler*phi1; P_euler=P_euler-Ts*(Pph*Pph.')/m2;
+    th_new=theta1+Ts*P_euler*eps1*phi1; thn=norm(th_new);
+    theta1=th_new*min(1,theta_max_val/thn);
+    theta_hist1(:,k)=theta1; P_tr1(k)=trace(P_euler);
+    [u1(k),F_zf1]=filter(numF,denF,-theta1.'*lam1,F_zf1);
+    if mod(k,round(Nsim/8))==0
+        fprintf('  t=%.1fs: ||th||=%.3f, tr(P)=%.2e\n',t(k),thn,trace(P_euler));
     end
 end
 
-% ---------- 4. 性能分析与可视化 ----------
-% 自适应控制性能对比
-figure('Name', '自适应(Jafari结构) vs 固定MOSEK控制器'); %[output:7535d131]
-subplot(3,1,1); %[output:7535d131]
-hold on; %[output:7535d131]
-plot(t, y_adapt, 'b', 'LineWidth', 1.5, 'DisplayName', '自适应 (Jafari)'); %[output:7535d131]
-plot(t, d, 'k:', 'LineWidth', 1.0, 'DisplayName', '扰动信号'); %[output:7535d131]
-xline(4, 'g--', 'Controller ON'); %[output:7535d131]
-xlabel('Time (s)'); ylabel('Output y'); %[output:7535d131]
-title('输出性能对比'); %[output:7535d131]
-legend show; grid on; ylim([-2,2]); %[output:7535d131]
+fin1=round(0.5*Nsim):Nsim;
+rms_y1=sqrt(mean(y1(fin1).^2)); rms_d=sqrt(mean(d(fin1).^2));
+supp1=20*log10(rms_y1/rms_d);
+fprintf('\n=== 第1段(Lambda+Euler): 抑制=%.1f dB, ||th||=%.3f\n',supp1,norm(theta1));
 
-subplot(3,1,2); %[output:7535d131]
-hold on; %[output:7535d131]
-plot(t, u_adapt, 'b--', 'LineWidth', 1.5, 'DisplayName', '自适应 (Jafari)'); %[output:7535d131]
-xline(4, 'g--', 'Controller ON'); %[output:7535d131]
-xlabel('Time (s)'); ylabel('Control Input u'); %[output:7535d131]
-title('控制输入对比'); %[output:7535d131]
-legend show; grid on; %[output:7535d131]
+figure('Name','第1段:Lambda+Euler');
+subplot(3,1,1); plot(t,d,'Color',[.7 .7 .7]); hold on; plot(t,plant1,'r--'); plot(t,y1,'b-');
+legend('d','G输出','y'); title(sprintf('第1段(Lambda+Euler): 抑制 %.1f dB',supp1)); grid on;
+subplot(3,1,2); plot(t,u1,'g-'); title('控制 u(t)'); grid on;
+subplot(3,1,3); plot(t,theta_hist1(1:5:end,:)'); title('\theta(t)'); grid on;
 
-subplot(3,1,3); %[output:7535d131]
-plot(t, rms_history, 'b-', 'LineWidth', 1.5); %[output:7535d131]
-xline(4, 'g--', 'Controller ON'); %[output:7535d131]
-xlabel('Time (s)'); ylabel('Rolling RMS'); %[output:7535d131]
-title('自适应控制RMS收敛轨迹'); %[output:7535d131]
-grid on; %[output:7535d131]
+%% ====== 第2段: Lambda基 + 归一化RLS ======
+P_rls=eye(Nparam)*0.5; theta_max_r=5; gamma0_r=1.0; theta2=zeros(Nparam,1);
+Lam_zf2=zeros(Nparam,1); phi_F_zf2=zeros(Nparam,nF); phi_G0_zf2=zeros(Nparam,nG0);
+G_zf2=zeros(max(length(numGd_s),length(denGd_s))-1,1); G0_zf2=zeros(nG0,1); F_zf2=zeros(nF,1);
+y2=zeros(1,Nsim); u2=zeros(1,Nsim); plant2=zeros(1,Nsim);
+theta_hist2=zeros(Nparam,Nsim); P_tr2=zeros(1,Nsim);
+
+fprintf('\n===== 第2段: Lambda+RLS =====\n');
+lam2=zeros(Nparam,1); phi2=zeros(Nparam,1);
+
+for k=2:Nsim
+    [y_G_k,G_zf2]=filter(numGd_s,denGd_s,u2(k-1),G_zf2);
+    plant2(k)=y_G_k; y2(k)=y_G_k+d(k);
+    [G0_u_k,G0_zf2]=filter(numG0d_s,denG0d_s,u2(k-1),G0_zf2);
+    z_k=y2(k)-G0_u_k;
+    ys=z_k;
+    for stage=1:Nparam
+        [ys,Lam_zf2(stage)]=filter(numG1,denG1,ys,Lam_zf2(stage));
+        lam2(Nparam-stage+1)=ys;
+    end
+    for i=1:Nparam
+        [fo,phi_F_zf2(i,:)]=filter(numF,denF,lam2(i),phi_F_zf2(i,:)');
+        [phi2(i),phi_G0_zf2(i,:)]=filter(numG0d_s,denG0d_s,fo,phi_G0_zf2(i,:)');
+    end
+    m2=1+gamma0_r*(phi2.'*phi2); eps2=(z_k-theta2.'*phi2)/m2;
+    Pph=P_rls*phi2; den=m2+phi2.'*Pph;
+    if den>1e-12
+        Kr=Pph/den; P_rls=P_rls-(Kr*Pph.');
+        th_new=theta2+Kr*eps2; thn=norm(th_new);
+        theta2=th_new*min(1,theta_max_r/thn);
+    end
+    theta_hist2(:,k)=theta2; P_tr2(k)=trace(P_rls);
+    [u2(k),F_zf2]=filter(numF,denF,-theta2.'*lam2,F_zf2);
+    if mod(k,round(Nsim/8))==0
+        fprintf('  t=%.1fs: ||th||=%.3f, tr(P)=%.2e\n',t(k),thn,trace(P_rls));
+    end
+end
+
+fin2=round(0.5*Nsim):Nsim;
+rms_y2=sqrt(mean(y2(fin2).^2)); supp2=20*log10(rms_y2/rms_d);
+rms_u2=sqrt(mean(u2(fin2).^2));
+fprintf('\n=== 第2段(Lambda+RLS): 抑制=%.1f dB, ||th||=%.3f, uRMS=%.0f\n',supp2,norm(theta2),rms_u2);
+
+figure('Name','第2段:Lambda+RLS');
+subplot(3,1,1); plot(t,d,'Color',[.7 .7 .7]); hold on; plot(t,plant2,'r--'); plot(t,y2,'b-');
+legend('d','G输出','y'); title(sprintf('第2段(Lambda+RLS): 抑制 %.1f dB',supp2)); grid on;
+subplot(3,1,2); plot(t,u2,'g-'); title('控制 u(t)'); grid on;
+subplot(3,1,3); plot(t,theta_hist2(1:5:end,:)'); title('\theta(t)'); grid on;
+
+fprintf('\n===== 两段对比 =====\n');
+fprintf('扰动RMS=%.4f\n',rms_d);
+fprintf('第1段(Lambda+Euler): 抑制=%.1f dB, ||th||=%.3f\n',supp1,norm(theta1));
+fprintf('第2段(Lambda+RLS):   抑制=%.1f dB, ||th||=%.3f, uRMS=%.0f\n',supp2,norm(theta2),rms_u2);
+fprintf('调试完成。\n');
 %%
 %[text] ## 5 附录
 function F = designLTIFilter(G0, k0, delta0, alpha, m, omega_max)
