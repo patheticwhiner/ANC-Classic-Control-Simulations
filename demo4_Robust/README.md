@@ -6,43 +6,50 @@
 
 ## 目录结构
 
-| 文件 | 类型 | 说明 |
-|------|------|------|
-| `run_RST_eMOPSO.m` | 主脚本 | 配置系统模型 → 运行 ε-MOPSO → 可视化 Pareto 前沿 → 保存结果 |
-| `benchmark_MOEAs.m` | 分析脚本 | ε 值与种群大小的参数敏感性分析 |
-| | | |
-| `eMOPSO_core.m` | 算法核心 | ε-MOPSO 多目标粒子群优化（ε-支配、Box 索引、Archive 维护） |
-| `RST_objective.m` | 目标函数 | Zames-Francis 积分匹配误差 + Bezout 残差（3 目标） |
-| `RST_constraints.m` | 约束函数 | 频域模值裕度与延迟裕度上下界 |
-| `penalty_function.m` | 惩罚函数 | 将约束违例映射为增广目标值 |
-| `postprocess_RST.m` | 后处理 | 从优化结果反解 R/S/T 控制器并仿真验证 |
-| `testFunctions.m` | 测试函数 | 标准多目标测试函数（F1-F4）用于算法验证 |
-| | | |
-| `PSO_Foundations.md` | 📖 入门教程 | PSO 从零基础到 ε-MOPSO 的完整数学推导（含定理证明） |
-| `RST_eMOPSO_spec.md` | 规范文档 | 数学建模与算法规范 |
-| `MOEA_algorithms.md` | 算法手册 | 四种 MOEA 算法（MOPSO/ε-MOPSO/NSGA-II/MODE）详解 |
-| `Solution.md` | 推导文档 | RST 优化问题的案例推导 |
-| `README.md` | 本文件 | 目录说明 |
-| | | |
-| `run_log.txt` | 日志 | 最近一次运行的 MATLAB 控制台输出 |
-| `RST_eMOPSO_results.mat` | 数据 | ε-MOPSO 优化结果（Archive、Pareto 前沿、选定解） |
+```
+demo4_Robust/
+├── run_RST_eMOPSO.m              ← 主入口脚本
+├── benchmark_MOEAs.m             ← 参数敏感性分析
+│
+├── utils/                        ← 算法核心与工具函数
+│   ├── eMOPSO_core.m               ε-MOPSO 多目标粒子群优化
+│   ├── RST_objective.m             Zames-Francis 积分目标函数
+│   ├── RST_constraints.m           频域模值/延迟裕度约束
+│   ├── penalty_function.m          约束违例惩罚映射
+│   ├── postprocess_RST.m           反解 R/S/T 控制器
+│   ├── testFunctions.m             标准多目标测试函数
+│   ├── export_for_validator.m      控制器导出工具
+│   └── validate_controller.m       控制器频域/时域验证
+│
+├── output/                       ← 运行输出
+│   ├── RST_eMOPSO_results.mat      Pareto 前沿 / Archive
+│   ├── RST_model.mat               系统模型数据
+│   ├── RST_controller.mat          控制器多项式
+│   └── *.txt                       运行日志
+│
+├── About_PSO_Foundations.md       ← 📖 PSO 完整数学推导（含定理证明）
+├── About_Solution.md              ← 🔬 RST 案例推导（柔性传动系统）
+├── About_RST_eMOPSO_spec.md       ← 📐 数学建模与算法规范
+├── About_MOEA_algorithms.md       ← 📋 四种 MOEA 算法横向对比
+└── README.md                      ← 本文件
+```
 
 ## 阅读路径
 
 初学者建议按以下顺序阅读：
 
-1. 📖 **[PSO_Foundations.md](PSO_Foundations.md)** — 从优化问题建模 → 标准 PSO → 收敛性定理证明 → MOPSO → ε-MOPSO 的完整数学推导
-2. 📋 **[MOEA_algorithms.md](MOEA_algorithms.md)** — 四种算法（MOPSO / ε-MOPSO / NSGA-II / MODE）的横向对比与伪代码
-3. 📐 **[RST_eMOPSO_spec.md](RST_eMOPSO_spec.md)** — RST 控制器整定的数学建模与 ε-MOPSO 算法规范
-4. 🔬 **[Solution.md](Solution.md)** — 柔性传动系统案例的完整推导（物理模型 → 优化命题 → 控制器反解）
-5. 💻 **[README.md](README.md)**（本文件）— 代码使用手册
+1. 📖 **[About_PSO_Foundations.md](About_PSO_Foundations.md)** — 从优化问题建模 → 标准 PSO → 收敛性定理证明 → MOPSO → ε-MOPSO 的完整数学推导
+2. 📋 **[About_MOEA_algorithms.md](About_MOEA_algorithms.md)** — 四种算法（MOPSO / ε-MOPSO / NSGA-II / MODE）的横向对比与伪代码
+3. 📐 **[About_RST_eMOPSO_spec.md](About_RST_eMOPSO_spec.md)** — RST 控制器整定的数学建模与 ε-MOPSO 算法规范
+4. 🔬 **[About_Solution.md](About_Solution.md)** — 柔性传动系统案例的完整推导（物理模型 → 优化命题 → 控制器反解）
+5. 💻 本文件 — 代码使用手册
 
 ## 快速开始
 
 1. 在 MATLAB 中将工作目录设为 `demo4_Robust/`
-2. 将 `functions/` 添加到路径：`addpath('../functions')`
+2. 将 `functions/` 和 `utils/` 添加到路径：`addpath('../functions', 'utils')`
 3. 运行主仿真：`run('run_RST_eMOPSO')`
-4. 查看结果：生成的 `RST_eMOPSO_results.mat` 包含最优解
+4. 查看结果：`output/RST_eMOPSO_results.mat` 包含最优解
 
 ### 仿真参数
 

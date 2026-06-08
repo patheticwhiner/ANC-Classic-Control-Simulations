@@ -28,8 +28,20 @@ LQGbasedANC/
 │   ├── LQG_idmodel.m    将LQG设计拓展至辨识模型
 │   └── AboutLQG.md 此文档对工程中设计的LQG控制方法作了相对完整的说明
 |
-├── demo3_Robust/ still in progress
-│  
+├── demo3_Robust/ 鲁棒与自适应ANC (Jafari-Ioannou + H∞)
+│   ├── Theory_Foundations.md         公共理论基础
+│   ├── Derivation_Problem1~4.md      四道题的考试答题级推导
+│   ├── ExperimentReport_TimeVarying.md  时变频率实验报告
+│   ├── JafariANC_RealAcoustic.m      统一仿真入口
+│   └── demos/                        开发变体与实验脚本
+│
+├── demo4_Robust/ ε-MOPSO RST控制器参数整定
+│   ├── run_RST_eMOPSO.m              主入口脚本
+│   ├── benchmark_MOEAs.m             参数分析
+│   ├── utils/                         算法核心与工具函数
+│   ├── output/                        运行输出
+│   └── About_PSO_Foundations.md       PSO完整推导 (含定理证明)
+│
 └── README.md 此文档提供了工程的概述
 ```
 
@@ -41,7 +53,7 @@ LQGbasedANC/
 | ------ | ------------------------------------------------------------ |
 | RST    | [AboutRST](.\demo1_RST\AboutRST.md)：极点配置法应用的实验记录文档 |
 | LQG    | [AboutLQR](.\demo2_LQG\AboutLQR.md)：LQR仿真记录，用于快速了解LQR的基本思想和应用<br />[AboutLQGpt1](.\demo2_LQG\AboutLQGpt1.md)：针对带通滤波器模型 的 LQG初步仿真记录<br />[AboutLQGpt2](.\demo2_LQG\AboutLQGpt2.md)：针对声管道辨识模型 的 LQG仿真记录 |
-| Robust | [AboutRobust](.\demo3_Robust\AboutRobust.md)：鲁棒控制仿真记录 |
+| Robust | [Theory_Foundations](.\demo3_Robust\Theory_Foundations.md)：公共理论基础（自适应控制 + H∞鲁棒控制）<br />[题1-连续CC](.\demo3_Robust\Derivation_Problem1_Jafari_ContinuousCC.md) · [题2-离散AVC](.\demo3_Robust\Derivation_Problem2_Jafari_DiscreteAVC.md)<br />[题3-H∞综合](.\demo3_Robust\Derivation_Problem3_HinfSynthesis.md) · [题4-真实声学路径](.\demo3_Robust\Derivation_Problem4_RealAcousticPath.md)<br />[时变频率实验](.\demo3_Robust\ExperimentReport_TimeVarying.md) |
 |        | 可供使用的[系统模型](.\dataset\AboutModel.md)                |
 |        | 可供使用的[激励信号以及生成原则](.\signal_excitation\AboutExcitation.md) |
 
@@ -55,7 +67,7 @@ LQGbasedANC/
 | ------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
 | **理论基础** | （1）能够按照需求为被控系统选取主导极点/辅助极点，设计预先指定环节；<br />（2）掌握灵敏度函数与Bezout多项式的基本概念，能够使用函数求解Diophantine方程；<br />（3）仿真验证所设计的控制器是否符合要求 | （1）能够对带通滤波器的输入-输出数据辨识为ARMAX模型，并进一步转化为状态空间模型表示；<br />（2）针对状态空间模型选取合适的Q,R参数，并使用工具完成Riccati方程的求解；<br />（3）仿真验证所设计的控制器是否符合要求 | （1）了解H∞鲁棒控制理论中的1984 Approach以及1987 DGKF Approach，明确鲁棒控制问题的标准定义；<br />（2）针对被控对象传递函数模型，选取合适的灵敏度约束权值，并使用工具求解控制器；<br />（3）仿真验证所设计的控制器是否符合要求 | （1）了解Jafari& Ioannou(2015)研究中提出的控制器设计方案；<br />（2）设计合适的H∞优化问题，并使用数学工具求解控制器；<br />（3）仿真验证所设计的控制器是否符合要求 |
 | **简化验证** | ✅在Carmona 2000年的论文中完整介绍了基于管道声学的ANC实验。使用该论文提供的模型，以及论文提供的参数设计，能够通过仿真验证。 | ✅在钱梵梵等人2022年的论文中介绍了LQG应用于管道ANC的实验，将其中被控对象模型简化为带通滤波器，能够通过仿真验证。 | ❓使用白明宪等人1997年论文中介绍的耳机系统，以及论文提供的控制器设计，在存在白噪声干扰的情况下使用ANC算法滤除噪声。没有使用MATLAB hinfsyn工具完整控制器设计 | ✅针对简化模型，能够通过仿真验证复现                          |
-| **仿真验证** | ❓针对实际辨识的被控对象所设计的控制器暂且不能完全满足需求，仿真结果不理想。 | ✅对于辨识的30阶次级通路模型，完成了LQG控制器设计以及仿真验证。对于参数选取等未作进一步优化。 | ❌暂未针对实际辨识的被控对象作仿真验证                        | ❌暂未针对实际辨识的被控对象作仿真验证                        |
+| **仿真验证** | ❓针对实际辨识的被控对象所设计的控制器暂且不能完全满足需求，仿真结果不理想。 | ✅对于辨识的30阶次级通路模型，完成了LQG控制器设计以及仿真验证。对于参数选取等未作进一步优化。 | ❌暂未针对实际辨识的被控对象作仿真验证                        | ✅对ARMAX(30,30,30,22)真实声学模型，F(z)+FIR固定控制器实现23dB抑制，NLMS自适应时变跟踪22dB |
 | **实验验证** | ❌                                                            | ❌暂未将仿真结果迁移至实物实验平台。                          | ❌                                                            | ❌                                                            |
 
 ### （2）进阶部分：自适应控制器设计
@@ -64,7 +76,7 @@ LQGbasedANC/
 | ------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
 | **理论基础** | 需在Carmona等人研究的基础上，增加Landau等人研究中提供的自适应环节 | 需在已完成的LQG实验基础上，增加钱梵梵等人(2022)研究中的自适应环节 | 需在已完成的固定控制器设计基础上，增加Jafari& Ioannou(2015)研究中的自适应环节 |
 | **简化验证** | ✅针对Carmona 2000论文中的模型与参数设计，能够通过仿真验证    |                                                              |                                                              |
-| **仿真验证** | ❓暂未针对实际辨识的被控对象作仿真验证                        | ❌仿真发散，实验未通过                                        | ❌仿真发散，实验未通过                                        |
+| **仿真验证** | ❓暂未针对实际辨识的被控对象作仿真验证                        | ❌仿真发散，实验未通过                                        | ✅固定FIR 23dB抑制 + NLMS自适应时变跟踪22dB（详见 [题4](.\demo3_Robust\Derivation_Problem4_RealAcousticPath.md) 和 [实验报告](.\demo3_Robust\ExperimentReport_TimeVarying.md)） |
 | **实验验证** | ❌                                                            | ❌                                                            | ❌                                                            |
 
 ---
