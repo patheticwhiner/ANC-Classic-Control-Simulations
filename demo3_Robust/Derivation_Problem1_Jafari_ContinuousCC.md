@@ -124,7 +124,11 @@ $$\Lambda_k(s) = \frac{\lambda^{k+1}}{(s+\lambda)^{k+1}}, \qquad k = 0, 1, \dots
 **本题参数选择**：
 
 - $N = 20$（$\ge 2n_{\max} = 10$，4 倍冗余以增强频率选择性）
+
+> ⚠️ **约束 C4**：$N \ge 2n_{\max}$ 是精确抑制 $n_{\max}$ 个正弦扰动所需的**最低自由度**——每个频率需要一对共轭零点（2 个实参数）。若 $n_{\max}$ 估计错误（实际扰动频率数超过 5），$N=20$ 可能不再充足——控制器在未预期的频率处无法形成零点，该频率分量通过反馈回路泄漏。但 $N$ 也不能任意大：(i) $N$ 增大 → RLS 的 $P$ 矩阵维度 $N \times N$ 平方增长，计算量 $O(N^2)$/步；(ii) $N$ 过大 → 冗余自由度被噪声填充（过参数化），$\theta$ 中出现 Pattern B 漫游（参见题4 §5.5）。
 - $\lambda = 500$ rad/s（$> \bar{\omega}_{\max} = 600$ 的约 83%，保证基函数在扰动频带内增益≈1）
+
+> ⚠️ **约束 C3**：Laguerre 极点 $\lambda$ 必须**大于**最大可能的扰动频率 $\bar{\omega}_{\max}$，以确保所有基函数 $\Lambda_k(j\omega)$ 在 $\omega \in [0, \bar{\omega}_{\max}]$ 内保持单位增益附近。若 $\lambda < \bar{\omega}_{\max}$（例如将 $\lambda$ 误设为 300 rad/s），则 $\Lambda_k(j\omega)$ 在扰动频率 187 rad/s 处已滚降数 dB——这意味着 $K(s,\theta)$ 的可用增益范围被压缩，自适应不得不放大 $\|\theta\|$ 来补偿，可能触发投影边界或违反小增益条件。典型取值 $\lambda \in [1.5\bar{\omega}_{\max}, 5\bar{\omega}_{\max}]$；本题 $\lambda/\bar{\omega}_{\max} \approx 0.83$ 偏低但实际仍可工作（因 $\lambda=500$ 大于两个实际扰动频率 70 和 187）。
 
 自适应滤波器为 [式 (A.6)]：
 
@@ -148,6 +152,8 @@ $$z(t) = d(t) + G_0(s)\Delta_m(s)[u(t)]$$
 
 当 $\Delta_m \approx 0$（低频段 $\mu=0.001$ 极小），$z(t) \approx d(t)$。
 
+> ⚠️ **约束 C1**：$z(t)$ 可以代替 $d(t)$ 的前提是**在该频段内建模不确定性 $\Delta_m(s)$ 足够小**。若扰动频率恰好落在未建模动态显著的频段（例如高频共振区），则 $z(t)$ 中包含的 $G_0\Delta_m[u]$ 分量不可忽略，IMC 结构下 $z = d + G_0\Delta_m[u] \neq d$——整个线性参数化 (1.5) 的前提被破坏。本题 $\mu=0.001$ 在全频段提供了 60 dB 的乘性不确定性衰减，但此条件在一般声学系统中未必成立（参见题4，30 阶真实模型有 9 个 NMP 零点）。
+
 #### 4.2 应用 Swapping Lemma
 
 控制律：$u = -F K[z] = -F[\theta^T \Lambda[z]]$。
@@ -157,6 +163,8 @@ $$z(t) = d(t) + G_0(s)\Delta_m(s)[u(t)]$$
 $$\theta^T(t) \Lambda(s)[z(t)] \approx \theta^T(t) \cdot \Lambda(s)[z(t)]$$
 
 （交换误差 $\varepsilon_H \approx 0$，因 $\dot{\theta}$ 在秒级变化而 $F, G_0$ 的带宽在 $10^2$ rad/s 量级。）
+
+> ⚠️ **约束 C2**：Swapping Lemma 的慢自适应近似要求 $\|\dot{\theta}\|_\infty$ 远小于 $F(s)$ 和 $G_0(s)$ 的带宽。若 $P(0)$ 初始协方差过大（如 $10^6 I$ 而非 $500 I$），自适应增益过高会导致 $\theta$ 在秒级以下快速变化，$\varepsilon_H$ 不再可忽略——线性参数模型 (1.5) 中出现额外的动态耦合项，RLS 估计有偏。此外，[Theory_Foundations.md 约束 C1](Theory_Foundations.md) 指出 $H(s)$ 必须稳定——$F(s)$ 的 RHP 零点反射正是为了保证 $F$ 本身是稳定的。
 
 #### 4.3 回归向量
 
@@ -226,6 +234,8 @@ $$
 
 控制律中 $\theta^T \Lambda[z]$ **不经过** $G_0F$——若将 $\phi$（已包含 $G_0F$）误用于控制律，当 $\theta$ 收敛后控制器退化为固定增益反馈，丧失频率选择性。这是原版代码的核心 bug。
 
+> ⚠️ **约束 C6**：控制路径与自适应路径的信号流**在数学上必须严格区分**，没有近似余地。自适应路径中 $\phi = G_0F\Lambda[z]$ 额外包含 $G_0F$ 是为了构造线性参数模型 $z = \theta^{*T}\phi + \eta$；但控制律 $u = -F[\theta^T\Lambda[z]]$ 中的 $\theta^T\Lambda[z]$ 若被替换为 $\theta^T\phi = \theta^T G_0F\Lambda[z]$，则反馈回路中多出一个 $G_0F$ 因子——闭环传递函数变为 $G_0F \cdot (\theta^T\Lambda)$，控制器不再能独立调节每个频率的增益。在代码中，这一 bug 表现为：参数收敛后抑制性能不随 $\theta$ 变化而改善——因为控制器已经退化。
+
 离散化后（各传递函数经 Tustin 离散化）：
 
 $$
@@ -248,6 +258,8 @@ $$\kappa_0 \cdot \bar{\theta}_M \cdot \| \bar{F} G_0 \Delta_m \|_{\mathcal{L}_1}
 $$0.5 \times 5 \times 0.25 = 0.625 < 1 \;\; \checkmark$$
 
 留有 37.5% 裕度。若增大 $\kappa_0 = 0.8$，LHS = $0.8 \times 5 \times 0.25 = 1.0$（临界），当前选值合理。
+
+> ⚠️ **约束 C5**：投影界 $\theta_{\max}$ 不是独立可调的自由参数——它被鲁棒稳定性条件 $\kappa_0 \cdot \theta_{\max} \cdot \|F G_0 \Delta_m\| < 1$ **锁死**。增大 $\theta_{\max}$ 虽允许更强的自适应增益，但直接消耗小增益裕度；减小 $\kappa_0$ 虽恢复裕度，但降低 $F(s)$ 的整体增益 → 自适应必须补偿更多 → $\|\theta\|$ 增大 → 可能触发投影。$\kappa_0$、$\theta_{\max}$ 和 $\|\Delta_m\|$ 三者构成一个**三角耦合**——任一参数的调整都会牵动另外两个的可行范围。[Theory_Foundations.md 约束 C3](Theory_Foundations.md) 指出 $\theta_{\max}$ 还需涵盖 $\|\theta^*\|$，这进一步收紧了可行空间。
 
 ---
 
@@ -387,7 +399,11 @@ $\phi$ 中额外的 $G_0F$ 使控制器退化为固定增益反馈，丧失频�
 
 ### B.4 缺陷 4：高阶多项式数值崩溃
 
-$\Lambda_1(s) = \lambda^{20}/(s+\lambda)^{20}$ 展开后系数跨 $500^{20} \approx 10^{54}$ 量级，Tustin 离散化后 `den(1)` 被舍入为零，差分方程除以零产生 NaN。**修复**：用一阶节级联避免系数展开。
+$\Lambda_1(s) = \lambda^{20}/(s+\lambda)^{20}$ 展开后系数跨 $500^{20} \approx 10^{54}$ 量级，Tustin 离散化后 `den(1)` 被舍入为零，差分方程除以零产生 NaN。
+
+> ⚠️ **约束 C7**：对于 $N \ge 6$ 的 Laguerre 基实现，**绝对禁止**将 $\Lambda_k(s) = \lambda^{k+1}/(s+\lambda)^{k+1}$ 展开为单高阶传递函数后再离散化。$(s+\lambda)^{k+1}$ 的二项式展开系数随 $k$ 呈指数增长——$k=19$ 时最大系数 $\sim \lambda^{20} \approx 10^{54}$，加减运算中因量级悬殊导致有效数字完全丢失。**必须**使用一阶节级联（每个节的系数始终在 $O(\lambda)$ 量级），或利用共享级联链（附录A.1）同时获得数值稳定性和 $O(N)$ 加速。此约束不仅适用于 MATLAB——在任何有限精度平台上（Cortex-M、FPGA 的定点实现）均成立。
+
+**修复**：用一阶节级联避免系数展开。
 
 ### B.5 版本总结
 
