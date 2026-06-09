@@ -83,30 +83,39 @@ LQGbasedANC/
 
 ## Git 工作流规范
 
-**原则**：永远不在 `master` 上直接 commit，所有修改通过 feature branch 提交。
+**原则**：仓库管理者可直接在 `master` 提交并推送，无需 PR 流程。
 
 ```bash
-# 1. 从最新 master 创建 feature 分支
+# === 管理者工作流 (推荐) ===
+# 1. 拉取最新
 git checkout master
 git pull --rebase
-git checkout -b feature/<简短描述>
 
 # 2. 选择性 stage 并提交 (conventional commits)
 git add <修改的文件>          # 不要用 git add . 或 git add -A
 git commit -m "fix: <简述>"
 
-# 3. 推送 feature 分支
+# 3. 直接推送 master
+git push origin master
+
+
+# === 协作者工作流 (需 PR) ===
+# 1. 从最新 master 创建 feature 分支
+git checkout -b feature/<简短描述>
+
+# 2. 选择性 stage 并提交
+git add <修改的文件>
+git commit -m "fix: <简述>"
+
+# 3. 推送 feature 分支 → 创建 PR → Review → Merge
 git push -u origin feature/<简短描述>
 
-# 4. 在 GitHub 创建 PR → Review → Merge
-
-# 5. 清理本地分支
-git checkout master
-git pull --rebase
+# 4. 清理本地分支
+git checkout master && git pull --rebase
 git branch -D feature/<简短描述>
 ```
 
 **Commit Message 格式**：`<type>: <简述>`，常用 type：`fix`、`feat`、`refactor`、`docs`。
 
-**反模式**：❌ 在 master 上直接 commit · ❌ `git add -A` · ❌ force push 已共享的分支 · ❌ 一个 commit 包含多个不相关修改
+**反模式**：❌ `git add -A` · ❌ force push 已共享的分支 · ❌ 一个 commit 包含多个不相关修改
 
