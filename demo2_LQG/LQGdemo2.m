@@ -2,8 +2,8 @@
 clear; close all; clc;
 
 %% 1. 加载数据与模型构建
-load('..\dataset\bltdWhiteNoise_ssmodel.mat');
-load('..\dataset\bpf_ssmodel.mat');
+load('..\dataset\syn_whitenoise_ssmodel.mat');
+load('..\dataset\syn_bpf_ssmodel.mat');
 
 % --- 耦合系统 (Plant) ---
 n = size(Af, 1);    % 原系统状态维度

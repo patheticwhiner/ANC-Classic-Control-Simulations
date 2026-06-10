@@ -1,156 +1,130 @@
-% DataManager.m - ·ÂÕæÊı¾İ¼ÓÔØÓëµ¼³ö¹¤¾ß
-function [x, y, t, fs] = DataManager(dataSource, exportPath)
-    % Êı¾İ¼ÓÔØÓëµ¼³ö¹¤¾ß
-    %
-    % ÊäÈë:
-    %   dataSource - ×Ö·û´®»òÊı×Ö£¬Ö¸¶¨Òª¼ÓÔØµÄÊı¾İÔ´
-    %   exportPath - [¿ÉÑ¡] ×Ö·û´®£¬Êı¾İµ¼³öÂ·¾¶£¬²»Ìá¹©Ôò²»µ¼³ö
-    %
-    % Êä³ö:
-    %   x - ÊäÈëĞÅºÅ
-    %   y - Êä³öĞÅºÅ
-    %   t - Ê±¼äÏòÁ¿
-    %   fs - ²ÉÑùÆµÂÊ
-    %
-    % ÓÃ·¨Ê¾Àı:
-    %   [x, y, t, fs] = DataManager('pipe_sim');
-    %   [x, y, t, fs] = DataManager(1); % Êı×ÖË÷Òı
-    %   [x, y, t, fs] = DataManager('PRBS_001', 'E:\Code\MATLAB_ANC\data');
-    
-    if nargin < 2
-        exportPath = '';  % Ä¬ÈÏ²»µ¼³ö
-    end
-    
-    % Êı¾İ¼ÓÔØ
-    fprintf('ÕıÔÚ¼ÓÔØÊı¾İÔ´: %s...\n', num2str(dataSource));
-    
-    % ÅĞ¶ÏÊäÈëÀàĞÍ²¢È·¶¨ÎÄ¼şÃûºÍ²ÎÊı
-    if isnumeric(dataSource)
-        % Êı×ÖÊäÈë£ºÖ±½ÓÓ³Éäµ½rec1_0xx¸ñÊ½
-        if dataSource < 10
-            fileName = sprintf('rec1_00%d', dataSource);
-        else
-            fileName = sprintf('rec1_0%d', dataSource);
-        end
-        filePath = [fileName '.mat'];
-        dataName = fileName;
-        
-    else
-        % ÎÄ±¾ÊäÈë£ºÌØÊâÇé¿ö´¦Àí
-        switch dataSource
-            case 'primpath'
-                fileName = 'primpath';
-                filePath = 'primpath.mat';
-                dataName = 'primpath';
-                
-            case 'secpath'
-                fileName = 'secpath';
-                filePath = 'secpath.mat';
-                dataName = 'secpath';
-                
-            otherwise
-                error('Î´ÖªÊı¾İÔ´: %s', dataSource);
-        end
-    end
-    
-    % Í³Ò»¼ÓÔØºÍ´¦ÀíÊı¾İ
-    try
-        % ¼ÓÔØÊı¾İÎÄ¼ş
-        data = load(filePath);
-        
-        % »ñÈ¡Êı¾İ½á¹¹£¨¼ÙÉèÊı¾İ½á¹¹ÃûÓëÎÄ¼şÃûÏàÍ¬£©
-        structName = fieldnames(data);
-        dataStruct = data.(structName{1});
-        
-        % ÌáÈ¡Êı¾İ
-        t = dataStruct.X.Data';
-        dt = t(2)-t(1);
-        
-        % ¸ù¾İdt¼ÆËã²ÉÑùÆµÂÊ£¬ÕÒµ½×î½Ó½üµÄÕû1000±¶Êı
-        fs_actual = 1/dt;
-        fs = round(fs_actual/1000) * 1000;  % ËÄÉáÎåÈëµ½×î½üµÄ1000±¶Êı
-        
-        x = dataStruct.Y(2).Data';
-        y = dataStruct.Y(1).Data';
-        
-        % ÉèÖÃ²Ã¼ô²ÎÊı
-        trimTop = 2*fs;  % Êı×ÖÊäÈëÄ¬ÈÏ²Ã¼ôÄ©Î²2Ãë
-        % ²Ã¼ôÊı¾İ
-        topIdx = 1 + trimTop;
-        t = t(topIdx:end);
-        x = x(topIdx:end);
-        y = y(topIdx:end);
-        
-    catch ME
-        error('¼ÓÔØÊı¾İÎÄ¼şÊ§°Ü: %s\n´íÎóĞÅÏ¢: %s', filePath, ME.message);
-    end
-    
-    % ÏÔÊ¾Êı¾İĞÅÏ¢
-    fprintf('Êı¾İ¼ÓÔØÍê³É!\n');
-    fprintf('Êı¾İÔ´Ãû³Æ: %s\n', dataName);
-    fprintf('²ÉÑùÂÊ: %.0f Hz\n', fs);
-    fprintf('Êı¾İ³¤¶È: %d µã (%.2f Ãë)\n', length(x), length(x)/fs);
-    fprintf('ÊäÈëĞÅºÅRMS: %.4f\n', rms(x));
-    fprintf('Êä³öĞÅºÅRMS: %.4f\n', rms(y));
-    
-    % µ¼³öÊı¾İ£¨Èç¹ûÌá¹©ÁËµ¼³öÂ·¾¶£©
-    if ~isempty(exportPath)
-        % È·±£µ¼³öÄ¿Â¼´æÔÚ
-        if ~exist(exportPath, 'dir')
-            mkdir(exportPath);
-            fprintf('´´½¨µ¼³öÄ¿Â¼: %s\n', exportPath);
-        end
-        
-        % ´´½¨µ¼³öÎÄ¼şÃû
-        timestamp = datestr(now, 'yyyymmdd_HHMMSS');
-        exportFile = fullfile(exportPath, sprintf('%s_%s.mat', dataName, timestamp));
-        
-        % ±£´æÊı¾İ
-        save(exportFile, 'x', 'y', 't', 'fs', 'dataName');
-        fprintf('Êı¾İÒÑµ¼³öÖÁ: %s\n', exportFile);
-    end
-    
-    % ¿ÉÊÓ»¯Êı¾İ¸ÅÀÀ£¨¿ÉÑ¡£©
-    if nargout == 0 || nargin > 1
-        figure('Name', ['Êı¾İ¸ÅÀÀ: ', dataName]);
-        
-        % Ê±Óò»æÍ¼
-        subplot(2,2,1);
-        plot(t(1:min(1000, length(t))), x(1:min(1000, length(x)))); 
-        grid on;
-        title('ÊäÈëĞÅºÅ(Ç°1000µã)');
-        xlabel('Ê±¼ä(Ãë)');
-        
-        subplot(2,2,3);
-        plot(t(1:min(1000, length(t))), y(1:min(1000, length(y)))); 
-        grid on;
-        title('Êä³öĞÅºÅ(Ç°1000µã)');
-        xlabel('Ê±¼ä(Ãë)');
-        
-        % ÆµÓò»æÍ¼
-        subplot(2,2,2);
-        window_length = min(1024, floor(length(x)/3));
-        window = hamming(window_length);
-        noverlap = window_length/2;
-        nfft = max(2048, 2^nextpow2(window_length));
-        [px, f] = pwelch(x, window, noverlap, nfft, fs);
-        plot(f, 10*log10(px));
-        grid on;
-        title('ÊäÈëĞÅºÅ¹¦ÂÊÆ×');
-        xlabel('ÆµÂÊ(Hz)'); 
-        ylabel('¹¦ÂÊ/ÆµÂÊ(dB/Hz)');
-        xlim([0 fs/2]);
-        
-        subplot(2,2,4);
-        [py, f] = pwelch(y, window, noverlap, nfft, fs);
-        plot(f, 10*log10(py));
-        grid on;
-        title('Êä³öĞÅºÅ¹¦ÂÊÆ×');
-        xlabel('ÆµÂÊ(Hz)'); 
-        ylabel('¹¦ÂÊ/ÆµÂÊ(dB/Hz)');
-        xlim([0 fs/2]);
-    end
-end
+function info = DataManager(dataSource)
+% DataManager.m - æ•°æ®é›†åŠ è½½ä¸æ¨¡å‹å¯¼å…¥ç»Ÿä¸€å…¥å£
+%
+% ç”¨æ³•:
+%   info = DataManager()              % åˆ—å‡ºæ‰€æœ‰å¯ç”¨æ•°æ®æº
+%   info = DataManager(dataSource)    % åŠ è½½æŒ‡å®šæ•°æ®æº
+%
+% è¾“å…¥:
+%   dataSource - å­—ç¬¦ä¸²ï¼ŒæŒ‡å®šè¦åŠ è½½çš„æ•°æ®æºåç§°
+%
+% è¾“å‡º:
+%   info - structï¼ŒåŒ…å«:
+%     .type    - æ•°æ®ç±»å‹: 'armax_model' | 'ss_model' | 'lms_data' | 'raw_signal'
+%     .name    - æ•°æ®æºåç§°
+%     .fs      - é‡‡æ ·é¢‘ç‡ (Hz)
+%     ä»¥åŠè¯¥ç±»å‹å¯¹åº”çš„æ•°æ®å­—æ®µ (è§ä¸‹æ–¹å„ case)
+%
+% å¯ç”¨æ•°æ®æº:
+%   'armax_30303022'   - ARMAX(30,30,30,22) è¾¨è¯†æ¨¡å‹ï¼Œå®æµ‹å£°å­¦ç®¡é“ @48kHz
+%                        å­—æ®µ: .model (idpoly), .orders, .fs
+%   'syn_whitenoise'   - åˆæˆå¸¦é™ç™½å™ªå£°å¹²æ‰°æ¨¡å‹ (çŠ¶æ€ç©ºé—´)
+%                        å­—æ®µ: .ss (sså¯¹è±¡, SISO), .fs
+%   'syn_bpf'          - åˆæˆå¸¦é€šæ»¤æ³¢å™¨è¢«æ§å¯¹è±¡æ¨¡å‹ (çŠ¶æ€ç©ºé—´)
+%                        å­—æ®µ: .ss (sså¯¹è±¡, SISO), .fs
+%   'lms_sysid'        - LMSç³»ç»Ÿè¾¨è¯†å®éªŒæ•°æ® (4é€šé“, 2026-01-20)
+%                        å­—æ®µ: .pri_err, .pri_ref, .sec_err, .sec_ref (å„ä¸ºstruct)
+%   'raw_dspace'       - dSPACEé‡‡é›†åŸå§‹ä¿¡å·æ•°æ®
+%                        å­—æ®µ: .signal.x (è¾“å…¥), .y (è¾“å‡º), .t (æ—¶é—´), .fs
 
-% ÔÚÖ÷½Å±¾ÖĞµ÷ÓÃÊ¾Àı:
-% [x, y, t, fs] = DataManager('pipe_sim', 'E:\Code\MATLAB_ANC\SysId_SecondaryPath\exported_data');
+    % æ•°æ®é›†æ ¹ç›®å½•
+    dsDir = fileparts(mfilename('fullpath'));
+
+    % å¯ç”¨æ•°æ®æºæ³¨å†Œè¡¨
+    sources = struct(...
+        'armax_30303022', struct('file', 'armax_30303022_2026-01-20.mat', 'type', 'armax_model'), ...
+        'syn_whitenoise', struct('file', 'syn_whitenoise_ssmodel.mat',     'type', 'ss_model'), ...
+        'syn_bpf',        struct('file', 'syn_bpf_ssmodel.mat',            'type', 'ss_model'), ...
+        'lms_sysid',      struct('file', 'lms_sysid_2026-01-20.mat',       'type', 'lms_data'), ...
+        'raw_dspace',     struct('file', 'raw_dspace_primpath.mat',        'type', 'raw_signal') ...
+    );
+
+    % æ— å‚æ•°è°ƒç”¨ï¼šåˆ—å‡ºæ‰€æœ‰å¯ç”¨æ•°æ®æº
+    if nargin == 0 || isempty(dataSource)
+        fprintf('=== dataset/ å¯ç”¨æ•°æ®æº ===\n');
+        names = fieldnames(sources);
+        for i = 1:length(names)
+            nm = names{i};
+            s = sources.(nm);
+            fprintf('  %-18s [%s]  %s\n', nm, s.type, s.file);
+        end
+        fprintf('\nç”¨æ³•: info = DataManager(''<name>'')\n');
+        if nargout == 0, return; end
+        info = sources;
+        return;
+    end
+
+    % æŸ¥æ‰¾æ•°æ®æº
+    if ~isfield(sources, dataSource)
+        error('æœªçŸ¥æ•°æ®æº: ''%s''ã€‚ä½¿ç”¨ DataManager() æŸ¥çœ‹å¯ç”¨åˆ—è¡¨ã€‚', dataSource);
+    end
+
+    src = sources.(dataSource);
+    fprintf('æ­£åœ¨åŠ è½½æ•°æ®æº: %s (%s)...\n', dataSource, src.file);
+
+    % ç»Ÿä¸€åŠ è½½
+    fullPath = fullfile(dsDir, src.file);
+    if ~exist(fullPath, 'file')
+        error('æ•°æ®æ–‡ä»¶ä¸å­˜åœ¨: %s', fullPath);
+    end
+
+    data = load(fullPath);
+    info.name = dataSource;
+    info.type = src.type;
+
+    switch src.type
+        case 'armax_model'
+            % ARMAXè¾¨è¯†æ¨¡å‹
+            info.model  = data.ARMAXmodel.model;   % idpoly å¯¹è±¡
+            info.orders = data.ARMAXmodel.orders;  % [na nb nc nk]
+            info.fs     = data.ARMAXmodel.fs;
+
+            fprintf('  ARMAX(%d,%d,%d,%d), fs=%d Hz\n', ...
+                info.orders(1), info.orders(2), info.orders(3), info.orders(4), info.fs);
+
+        case 'ss_model'
+            % åˆæˆçŠ¶æ€ç©ºé—´æ¨¡å‹: æ–‡ä»¶ç›´æ¥å¯¼å‡º (Af,Bf,Cf)/(Aw,Bw,Cw) çŸ©é˜µ
+            % æ„å»º ss å¯¹è±¡ä»¥ä¾¿ç»Ÿä¸€æ“ä½œ
+            if isfield(data, 'Aw')
+                % å«å¹²æ‰°æ¨¡å‹çš„ç³»ç»Ÿ (å¦‚ syn_whitenoise)
+                % æ„å»ºå¢å¹¿ç³»ç»Ÿ: æ§åˆ¶é€šé“Bf + å¹²æ‰°é€šé“Bw, è¾“å‡º[Cf, Cw]
+                n_plant = size(data.Af, 1);
+                n_dist  = size(data.Aw, 1);
+                info.ss_plant = ss(data.Af, data.Bf, data.Cf, 0, -1);
+                info.ss_dist  = ss(data.Aw, data.Bw, data.Cw, 0, -1);
+                info.fs = 1000;  % åˆæˆæ¨¡å‹é»˜è®¤é‡‡æ ·é¢‘ç‡
+                fprintf('  åˆæˆæ¨¡å‹ (å«å¹²æ‰°): plant=%dé˜¶, dist=%dé˜¶\n', n_plant, n_dist);
+                % åŒæ—¶ä¿ç•™åŸå§‹çŸ©é˜µä»¥ä¾¿å‘åå…¼å®¹
+                info.Af = data.Af; info.Bf = data.Bf; info.Cf = data.Cf;
+                info.Aw = data.Aw; info.Bw = data.Bw; info.Cw = data.Cw;
+            else
+                % ä»…è¢«æ§å¯¹è±¡çš„ç³»ç»Ÿ (å¦‚ syn_bpf)
+                info.ss = ss(data.Af, data.Bf, data.Cf, 0, -1);
+                info.fs = 1000;
+                fprintf('  åˆæˆæ¨¡å‹: %dé˜¶\n', size(data.Af, 1));
+                info.Af = data.Af; info.Bf = data.Bf; info.Cf = data.Cf;
+            end
+
+        case 'lms_data'
+            % LMSç³»ç»Ÿè¾¨è¯†æ•°æ® (4é€šé“)
+            info.pri_err = data.lms_pri_err;
+            info.pri_ref = data.lms_pri_ref;
+            info.sec_err = data.lms_sec_err;
+            info.sec_ref = data.lms_sec_ref;
+            fprintf('  LMSè¾¨è¯†æ•°æ®: pri(è¯¯å·®/å‚è€ƒ) + sec(è¯¯å·®/å‚è€ƒ)\n');
+
+        case 'raw_signal'
+            % åŸå§‹ä¿¡å·æ•°æ®
+            info.signal.x  = data.x;
+            info.signal.y  = data.y;
+            info.signal.t  = data.t;
+            info.fs        = data.fs;
+            fprintf('  åŸå§‹ä¿¡å·: %.0f Hz, %.2fç§’, %dé‡‡æ ·ç‚¹\n', ...
+                info.fs, length(data.x)/info.fs, length(data.x));
+
+        otherwise
+            error('æœªçŸ¥æ•°æ®ç±»å‹: %s', src.type);
+    end
+
+    fprintf('  åŠ è½½å®Œæˆã€‚\n');
+end

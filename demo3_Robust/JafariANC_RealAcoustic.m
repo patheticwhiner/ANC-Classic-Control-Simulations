@@ -10,10 +10,10 @@ clear; close all; clc;
 %[text] 9个非最小相位零点 → F(z) 频谱展平 → 固定 FIR(H∞插值)
 %[text] 自适应: NLMS (μ=0.05, N=64) — 替代RLS以避免P矩阵在非平稳环境衰减
 %% 0.1 模型加载
-modelFile = fullfile('..', 'dataset', 'ARMAX_SYSID_30303022.mat');
+modelFile = fullfile('..', 'dataset', 'armax_30303022_2026-01-20.mat');
 load(modelFile, 'ARMAXmodel');
 
-A = ARMAXmodel.model.A;             B_poly = ARMAXmodel.model.B; %[output:4e9303a0]
+A = ARMAXmodel.model.A;             B_poly = ARMAXmodel.model.B; %[output:9047ab43]
 d = ARMAXmodel.orders(4);           fs = ARMAXmodel.fs;
 Ts = 1/fs;
 B = B_poly(d+1:end);
@@ -288,6 +288,6 @@ end
 %[metadata:view]
 %   data: {"layout":"inline","rightPanelPercent":6.3}
 %---
-%[output:4e9303a0]
+%[output:9047ab43]
 %   data: {"dataType":"error","outputData":{"errorType":"runtime","text":"Dot indexing is not supported for variables of this type."}}
 %---

@@ -8,7 +8,8 @@ clear; close all; clc;
 
 %% 2. 加载和预处理数据
 % 加载仿真数据
-[x, y, t, Fs] = DataManager(20);
+info = DataManager('raw_dspace');
+x = info.signal.x; y = info.signal.y; t = info.signal.t; Fs = info.fs;
 fs = Fs;
 
 % 预处理 (与原脚本保持一致)
@@ -143,13 +144,13 @@ ARMAXmodel.fs = fs;
 ARMAXmodel.orders = armax_orders;
 ARMAXmodel.description = 'ARMAX model identified from experimental data. G(q) = B(q)/A(q), H(q) = C(q)/A(q)';
 
-current_time = datetime('now');
-formatted_time = datestr(current_time, 'yyyy-mm-dd HH:MM:SS');
-formatted_time = strrep(formatted_time,':','');
-formatted_time = strrep(formatted_time,' ','_');
-filename = ['ARMAX_SYSID',formatted_time];
+% 生成符合命名规范的文件名: armax_<orders>_<date>.mat
+dateStr = datestr(now, 'yyyy-mm-dd');
+ordersStr = sprintf('%d%d%d%d', armax_orders(1), armax_orders(2), ...
+                       armax_orders(3), armax_orders(4));
+filename = fullfile('dataset', sprintf('armax_%s_%s.mat', ordersStr, dateStr));
 
 % 保存到 .mat 文件
 save(filename, 'ARMAXmodel');
 
-fprintf('\nARMAX模型已成功保存到 ARMAXmodel.mat 文件中。\n');
+fprintf('\nARMAX模型已成功保存到 %s 文件中。\n', filename);;

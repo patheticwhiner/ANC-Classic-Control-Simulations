@@ -1,8 +1,8 @@
 % 需要检查状态空间表示中是否含有延迟
 clear; close all; clc;
 %%
-load('..\dataset\bltdWhiteNoise_ssmodel.mat');
-load('..\dataset\ARMAX_SYSID_30303022.mat');
+load('..\dataset\syn_whitenoise_ssmodel.mat');
+load('..\dataset\armax_30303022_2026-01-20.mat');
 % 将ARMAX模型转换为状态空间模型
 % ARMAX模型是一个idpoly对象，包含A, B, C多项式系数。
 % 我们使用ssdata函数将其转换为状态空间表示。

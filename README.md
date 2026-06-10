@@ -12,9 +12,15 @@ LQGbasedANC/
 │   
 ├── signal_excitation/ 此目录下存放与工程相关的噪声模型说明
 │   └── AboutExcitation.md 此文档提供子目录下文件的说明
-├── dataset/ 此目录下存放一些程序生成的数据集，在主程序中被使用
-│   ├── bltdWhiteNoise_ssmodel.mat  用以建模干扰的带限白噪声状态空间模型
-│   └── bpf_ssmodel.mat		        用以建模被控对象的带通滤波器状态空间模型
+├── dataset/ 此目录下存放模型数据文件与数据导入工具 (详见 dataset/README.md)
+│   ├── README.md                    目录说明与模型清单
+│   ├── DataManager.m                数据加载统一入口
+│   ├── armax_identification.m       ARMAX辨识脚本
+│   ├── armax_30303022_2026-01-20.mat ARMAX(30,30,30,22)辨识模型
+│   ├── syn_whitenoise_ssmodel.mat   合成带限白噪声干扰模型
+│   ├── syn_bpf_ssmodel.mat          合成带通滤波器模型
+│   ├── lms_sysid_2026-01-20.mat     LMS系统辨识数据
+│   └── raw_dspace_primpath.mat      dSPACE原始录音信号
 │   
 ├── demo1_RST/ 此目录下存放一些用于调试与学习的临时文件
 │   ├── 
@@ -54,7 +60,7 @@ LQGbasedANC/
 | RST    | [AboutRST](.\demo1_RST\AboutRST.md)：极点配置法应用的实验记录文档 |
 | LQG    | [AboutLQR](.\demo2_LQG\AboutLQR.md)：LQR仿真记录，用于快速了解LQR的基本思想和应用<br />[AboutLQGpt1](.\demo2_LQG\AboutLQGpt1.md)：针对带通滤波器模型 的 LQG初步仿真记录<br />[AboutLQGpt2](.\demo2_LQG\AboutLQGpt2.md)：针对声管道辨识模型 的 LQG仿真记录 |
 | Robust | [Theory_Foundations](.\demo3_Robust\Theory_Foundations.md)：公共理论基础（自适应控制 + H∞鲁棒控制）<br />[题1-连续CC](.\demo3_Robust\Derivation_Problem1_Jafari_ContinuousCC.md) · [题2-离散AVC](.\demo3_Robust\Derivation_Problem2_Jafari_DiscreteAVC.md)<br />[题3-H∞综合](.\demo3_Robust\Derivation_Problem3_HinfSynthesis.md) · [题4-真实声学路径](.\demo3_Robust\Derivation_Problem4_RealAcousticPath.md)<br />[时变频率实验](.\demo3_Robust\ExperimentReport_TimeVarying.md) |
-|        | 可供使用的[系统模型](.\dataset\AboutModel.md)                |
+|        | 可供使用的[系统模型](.\dataset\README.md)                |
 |        | 可供使用的[激励信号以及生成原则](.\signal_excitation\AboutExcitation.md) |
 
 ## 项目进展

@@ -1,8 +1,8 @@
 % 需要检查状态空间表示中是否含有延迟
 clear; close all; clc;
 %%
-load('..\dataset\bltdWhiteNoise_ssmodel.mat');
-load('..\dataset\bpf_ssmodel.mat');
+load('..\dataset\syn_whitenoise_ssmodel.mat');
+load('..\dataset\syn_bpf_ssmodel.mat');
 
 %% 耦合系统
 % 增广状态矩阵
