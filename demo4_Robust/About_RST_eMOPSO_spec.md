@@ -75,6 +75,8 @@ $$
 
 ## 三、 PSO 基本算法实现 (Standard PSO)
 
+> 📎 PSO 完整数学推导（含 Jury 收敛性证明）见 **`About_PSO_Foundations.md`**。本节仅给规范摘要。
+
 设种群大小为 $n_{pop}$，最大迭代次数为 $k_{max}$。第 $i$ 个粒子的位置为 $\mathbf{x}^i_k$（即参数 $\boldsymbol{\theta}$），速度为 $\mathbf{v}^i_k$。
 
 **运动学更新方程：**
@@ -119,6 +121,8 @@ $$
 ---
 
 ## 五、 ε-MOPSO 核心机制 (ε-Domination & Archive)
+
+> 📎 ε-支配的完整定义与性质证明见 **`About_PSO_Foundations.md`** §多目标优化。
 
 ### 5.1 ε-支配定义 (ε-Domination Rule)
 对于两个解（粒子） $\boldsymbol{\theta}_1$ 和 $\boldsymbol{\theta}_2$，存在 $m_f$ 个目标。我们称 **$\boldsymbol{\theta}_1$ $\varepsilon$-支配 $\boldsymbol{\theta}_2$** (记作 $\boldsymbol{\theta}_1 \prec_\varepsilon \boldsymbol{\theta}_2$)，当且仅当：
@@ -243,6 +247,8 @@ $$
 ---
 
 ## B.1 问题：ARMAX(30,30,30,22) 模型真的有 9 个"非最小相位零点"吗？
+
+> 📎 完整调试历程（四次 Bezout 迭代、nX 提升轨迹、运行时间数据）见 **`About_ARMAX_Debugging.md`**。本附录聚焦根因分析和解决方案对比。
 
 ### B.1.1 实测数据
 

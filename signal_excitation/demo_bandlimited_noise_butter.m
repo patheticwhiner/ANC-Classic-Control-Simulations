@@ -77,7 +77,7 @@ xline(f_low, '--g', [num2str(f_low) ' Hz'], 'LabelVerticalAlignment', 'bottom');
 xline(f_high, '--g', [num2str(f_high) ' Hz'], 'LabelVerticalAlignment', 'bottom');
 hold off;
 
-save('bandlimitedNoise.mat', 'Aw', 'Bw', 'Cw', 'Dw');
+save('demo_bandlimited_noise_butter.mat', 'Aw', 'Bw', 'Cw', 'Dw');
 
 %% test:根据传函估算截止频率
 sys = ss(Aw, Bw, Cw, Dw, 1/fs);  % 创建离散系统模型

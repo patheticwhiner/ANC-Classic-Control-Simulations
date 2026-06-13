@@ -338,6 +338,11 @@ Rn = 1e-10 * eye(size(C, 1));  % 测量噪声协方差
 
 ### 6.3 控制方法的局限性
 
+### 6.4 待解决问题
+
+- 如何处理 Kalman 滤波器设计的不稳定性问题 (来自 AboutLQGpt2.md)
+- Q-RLS 自适应收敛条件: 见 `About_Q_Convergence.md`
+
 ## 参考资料
 
 [1] 钱梵梵. 基于Youla参数化的自适应输出调节及应用研究[D/OL]. 上海大学, 2022[2024-12-18]. [https://link.cnki.net/doi/10.27300/d.cnki.gshau.2022.000228](https://link.cnki.net/doi/10.27300/d.cnki.gshau.2022.000228). DOI:[10.27300/d.cnki.gshau.2022.000228](https://doi.org/10.27300/d.cnki.gshau.2022.000228).

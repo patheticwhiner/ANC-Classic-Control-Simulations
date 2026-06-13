@@ -1,4 +1,9 @@
 # 多目标优化算法 (MOEAs) 数学与算法实现手册
+
+> ⚠️ **已弃用** (2026-06-13)。PSO/ε-MOPSO 的权威推导见 **`About_PSO_Foundations.md`**。
+> NSGA-II 和 MODE 的伪代码尚未在代码中实现 (`benchmark_MOEAs.m` 为空)。
+> 本文件保留仅供历史参考，不再维护。
+
 包含：多目标问题定义、$\varepsilon$-MOPSO、MOPSO、NSGA-II、MODE 的核心数学推导与伪代码逻辑。
 
 ---
