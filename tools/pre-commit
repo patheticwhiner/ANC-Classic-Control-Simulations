@@ -1,0 +1,111 @@
+#!/bin/bash
+# ============================================================================
+# Git pre-commit hook: 自动清除 .mlx + .m 实时脚本的输出标记
+#
+# 安装方法（在项目根目录执行）:
+#   cp tools/pre-commit .git/hooks/pre-commit
+#   chmod +x .git/hooks/pre-commit
+#
+# .mlx 处理: 解包 ZIP → 删除 matlab/output.xml → 重新打包
+# .m 处理:   sed 剥离 %[output:...] / %[output:group:...] / %   data: / %---
+#            保留 %[text] / %[appendix] / %[metadata:view] 结构标记
+# 纯 shell 实现, 不依赖 MATLAB, 速度快 (<1s 完成)。
+#
+# 如需跳过本次清除（保留输出提交）:
+#   git commit --no-verify
+# ============================================================================
+
+set -e
+
+# 获取暂存区中新增或修改的 .mlx 文件
+STAGED_MLX=$(git diff --cached --name-only --diff-filter=ACMR | grep '\.mlx$' || true)
+
+if [ -n "$STAGED_MLX" ]; then
+
+CURDIR=$(pwd)
+CLEARED_COUNT=0
+
+for mlx in $STAGED_MLX; do
+    # 文件可能已被删除（ staged 的是删除操作）
+    if [ ! -f "$mlx" ]; then
+        continue
+    fi
+
+    TMPDIR=$(mktemp -d)
+
+    # 解包 .mlx
+    if ! unzip -q "$mlx" -d "$TMPDIR" 2>/dev/null; then
+        echo "  [pre-commit] WARNING: 无法解包 $mlx, 跳过"
+        rm -rf "$TMPDIR"
+        continue
+    fi
+
+    # 检查是否有输出文件
+    if [ ! -f "$TMPDIR/matlab/output.xml" ]; then
+        rm -rf "$TMPDIR"
+        continue
+    fi
+
+    # 删除输出文件
+    rm -f "$TMPDIR/matlab/output.xml"
+
+    # 删除 output/ 目录（旧版 MATLAB 格式）
+    rm -rf "$TMPDIR/output"
+
+    # 从 [Content_Types].xml 中移除 output.xml 的声明
+    CT_FILE="$TMPDIR/[Content_Types].xml"
+    if [ -f "$CT_FILE" ]; then
+        grep -v '/matlab/output\.xml' "$CT_FILE" > "$CT_FILE.tmp"
+        mv "$CT_FILE.tmp" "$CT_FILE"
+    fi
+
+    # 重新打包为 .mlx
+    rm -f "$mlx"
+    cd "$TMPDIR"
+    zip -q -r "$CURDIR/$mlx" .
+    cd "$CURDIR"
+
+    # 清理临时目录
+    rm -rf "$TMPDIR"
+
+    # 更新暂存区
+    git add "$mlx"
+
+    CLEARED_COUNT=$((CLEARED_COUNT + 1))
+    echo "  [pre-commit] ✓ 已清除输出: $mlx"
+done
+
+if [ "$CLEARED_COUNT" -gt 0 ]; then
+    echo "  [pre-commit] 共清除 $CLEARED_COUNT 个 .mlx 文件的输出"
+fi
+fi
+
+# ===== 清理 .m 文件的实时脚本输出标记 =====
+STAGED_M=$(git diff --cached --name-only --diff-filter=ACMR | grep '\.m$' || true)
+
+if [ -n "$STAGED_M" ]; then
+    CLEARED_M_COUNT=0
+
+    for mfile in $STAGED_M; do
+        if [ ! -f "$mfile" ]; then
+            continue
+        fi
+
+        sed -i \
+            -e '/^%\[output:\(group:\)\?[a-f0-9]\{8\}\][[:space:]]*$/d' \
+            -e '/^%   data:/d' \
+            -e '/^%---[[:space:]]*$/d' \
+            -e 's/[[:space:]]*%\[output:\(group:\)\?[a-f0-9]\{8\}\][[:space:]]*//g' \
+            "$mfile"
+
+        git add "$mfile"
+        CLEARED_M_COUNT=$((CLEARED_M_COUNT + 1))
+        echo "  [pre-commit] ✓ 已清除输出标记: $mfile"
+    done
+
+    if [ "$CLEARED_M_COUNT" -gt 0 ]; then
+        echo "  [pre-commit] 共清除 $CLEARED_M_COUNT 个 .m 文件的输出标记"
+    fi
+fi
+
+exit 0

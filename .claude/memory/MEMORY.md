@@ -1,0 +1,6 @@
+- [Git Workflow](git-workflow.md) — feature branch 规范，禁止在 master 上直接 commit
+- [Research Directions](research-directions.md) — 三条探索方向的全景对比与当前决策状态
+- [demo4 ARMAX Failure](demo4-armax-failure.md) — ZF+ε-MOPSO 对 ARMAX 的三重结构性失败
+- [demo3 Architecture](demo3-architecture.md) — Jafari F(z)+FIR+NLMS 管线架构与实测性能
+- [Work Plan](work-plan.md) — 全局工作计划：Phase 1→2→3→4
+- [Phase 1 Results](phase1-results.md) — 被控对象性能上限：三层约束 + 变频率分析（待完善）

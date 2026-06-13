@@ -173,7 +173,7 @@ $$
 </figure>
 
 
-+ 将所得到的外系统（exosystem）状态空间模型导出为bandlimitedNoise.mat，可导入到其它脚本文件中用于设计相应的控制器。
++ 将所得到的外系统（exosystem）状态空间模型导出为demo_bandlimited_noise_butter.mat，可导入到其它脚本文件中用于设计相应的控制器。
 
 $$
 \begin{align}

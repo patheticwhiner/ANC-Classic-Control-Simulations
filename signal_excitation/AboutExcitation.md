@@ -9,11 +9,11 @@ excitation/
 ├── simBandLtdWN.slx
 ├── generatePRBS.m
 ├── testPRBS.m
-├── testBandLtdWN.m
+├── test_bandlimited_wn_simulink.m
 ├── testPNmodel.m
 │   
-├── bandlimitedNoise.m
-├── bandlimitedNoise2.m
+├── demo_bandlimited_noise_butter.m
+├── demo_colored_noise_ss.m
 ├── dtmcTIDisturbance.m
 ├── dtmcTVDisturbance.m
 │   
@@ -26,7 +26,7 @@ excitation/
 
 ```
 testBandLtdWN.slx
-testBandLtdWN.m
+test_bandlimited_wn_simulink.m
 ```
 
 以下是为深入理解 Band-Limited White Noise 模块设计的实验方案，通过调整参数（采样时间、噪声功率、随机种子）对比时域特性、频谱特性及数据统计性质。实验步骤包含建模、参数设置、数据分析和可视化。Band-Limited White Noise模块生成的是高斯白噪声。
@@ -329,7 +329,7 @@ PRBS在系统辨识中被广泛使用，主要是因为其良好的激励特性�
 
 ## 随机性干扰的生成
 
-### bandlimitedNoise.m
+### demo_bandlimited_noise_butter.m
 
 #### 功能
 
@@ -344,7 +344,7 @@ PRBS在系统辨识中被广泛使用，主要是因为其良好的激励特性�
    - `f_low` 和 `f_high`：低、高截止频率（Hz）。
    - `order`：滤波器阶数。
 2. **运行脚本**：
-   - 在 MATLAB 中运行 [bandlimitedNoise.m](vscode-file://vscode-app/d:/Microsoft VS Code/resources/app/out/vs/code/electron-sandbox/workbench/workbench.html)。
+   - 在 MATLAB 中运行 [demo_bandlimited_noise_butter.m](vscode-file://vscode-app/d:/Microsoft VS Code/resources/app/out/vs/code/electron-sandbox/workbench/workbench.html)。
 3. **输出结果**：
    - 带限噪声信号 `w`。
    - 滤波器状态空间模型参数 `Aw`、`Bw`、`Cw`、`Dw`。
@@ -352,7 +352,7 @@ PRBS在系统辨识中被广泛使用，主要是因为其良好的激励特性�
 
 #### 输出文件
 
-- `bandlimitedNoise.mat`：保存滤波器的状态空间模型参数。
+- `demo_bandlimited_noise_butter.mat`：保存滤波器的状态空间模型参数。
 
 #### 注意事项
 
@@ -376,7 +376,7 @@ PRBS在系统辨识中被广泛使用，主要是因为其良好的激励特性�
 </figure>
 
 
-+ 将所得到的外系统（exosystem）状态空间模型导出为bandlimitedNoise.mat，可导入到其它脚本文件中用于设计相应的控制器。
++ 将所得到的外系统（exosystem）状态空间模型导出为demo_bandlimited_noise_butter.mat，可导入到其它脚本文件中用于设计相应的控制器。
 
 $$
 \begin{align}

@@ -37,7 +37,13 @@ info = DataManager('raw_dspace');       % dSPACE采集原始信号
 
 ## ARMAX 模型分析
 
-ARMAX 模型的分析工具位于 `functions/analyze_armax_model.m`：
+### 性能上限理论分析
+
+**[`About_Plant_Performance.md`](About_Plant_Performance.md)** — 被控对象性能上限的完整理论推导，涵盖 Bode 灵敏度积分、Poisson 积分约束、延迟约束、内模原理、前馈上限，以及四种 ANC 架构的定量对比。
+
+### 分析工具
+
+ARMAX 模型的结构分析工具位于 `functions/analyze_armax_model.m`：
 
 ```matlab
 % 分析 ARMAX 模型的能观标准型、互质性、零极点、灵敏度等

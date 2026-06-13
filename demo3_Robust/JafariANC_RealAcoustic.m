@@ -13,7 +13,7 @@ clear; close all; clc;
 modelFile = fullfile('..', 'dataset', 'armax_30303022_2026-01-20.mat');
 load(modelFile, 'ARMAXmodel');
 
-A = ARMAXmodel.model.A;             B_poly = ARMAXmodel.model.B; %[output:9047ab43]
+A = ARMAXmodel.model.A;             B_poly = ARMAXmodel.model.B;
 d = ARMAXmodel.orders(4);           fs = ARMAXmodel.fs;
 Ts = 1/fs;
 B = B_poly(d+1:end);
@@ -284,10 +284,4 @@ function v = polyval_freqz(num, den, w)
 end
 
 %[appendix]{"version":"1.0"}
-%---
 %[metadata:view]
-%   data: {"layout":"inline","rightPanelPercent":6.3}
-%---
-%[output:9047ab43]
-%   data: {"dataType":"error","outputData":{"errorType":"runtime","text":"Dot indexing is not supported for variables of this type."}}
-%---
