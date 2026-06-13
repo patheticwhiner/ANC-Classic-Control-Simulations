@@ -63,6 +63,8 @@ function [archive, archive_f, history] = eMOPSO_core(obj_func, n_var, n_obj, lb,
     if ~isfield(options, 'w_min'),       options.w_min       = 0.4;  end
     if ~isfield(options, 'archive_max'), options.archive_max = 100;  end
     if ~isfield(options, 'verbose'),     options.verbose     = true; end
+    if ~isfield(options, 'p_mut'),       options.p_mut       = 0;    end
+    if ~isfield(options, 'eta_m'),       options.eta_m       = 20;   end
 
     % 提取参数
     n_pop       = options.n_pop;
@@ -74,6 +76,8 @@ function [archive, archive_f, history] = eMOPSO_core(obj_func, n_var, n_obj, lb,
     w_min       = options.w_min;
     archive_max = options.archive_max;
     verbose     = options.verbose;
+    p_mut       = options.p_mut;
+    eta_m       = options.eta_m;
 
     % =====================================================================
     % 步骤1: 初始化种群
@@ -160,6 +164,37 @@ function [archive, archive_f, history] = eMOPSO_core(obj_func, n_var, n_obj, lb,
             % 更新种群
             pop(i, :) = new_x;
             vel(i, :) = new_v;
+
+            % --- 5.2.6 多项式变异 (可选, 用于维持多样性) ---
+            % 变异后立即评估并更新 Archive，确保多样性被利用
+            if p_mut > 0 && rand() < p_mut
+                x_mut = new_x;
+                mutated = false;
+                for d = 1:n_var
+                    if rand() < 1/n_var
+                        delta = rand();
+                        if delta < 0.5
+                            delta_q = (2*delta)^(1/(eta_m+1)) - 1;
+                        else
+                            delta_q = 1 - (2*(1-delta))^(1/(eta_m+1));
+                        end
+                        x_mut(d) = x_mut(d) + delta_q * (ub(d) - lb(d));
+                        x_mut(d) = max(lb(d), min(ub(d), x_mut(d)));
+                        mutated = true;
+                    end
+                end
+                if mutated
+                    f_mut = obj_func(x_mut')';
+                    if epsilon_dominates(f_mut', pbest_f(i, :)', epsilon)
+                        pbest(i, :)   = x_mut;
+                        pbest_f(i, :) = f_mut;
+                    end
+                    [archive, archive_f] = update_archive(archive, archive_f, ...
+                                                           x_mut, f_mut, ...
+                                                           epsilon, archive_max);
+                    pop(i, :) = x_mut;
+                end
+            end
         end
 
         % ---------------------------------------------------------

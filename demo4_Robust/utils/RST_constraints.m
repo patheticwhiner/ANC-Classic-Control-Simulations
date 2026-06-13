@@ -133,8 +133,8 @@ function [g1, g2, max_g1, max_g2] = RST_constraints(theta, sys_info)
     relax = ones(size(omega_col));
     low_freq_idx = omega_col < 0.1 * pi;
     if any(low_freq_idx)
-        % 在 ω=0 处完全放松(×0.5)，在 ω=0.1π 处回到正常约束(×1.0)
-        relax(low_freq_idx) = 1.0 - 0.5 * (1 - omega_col(low_freq_idx) / (0.1*pi));
+        % 在 ω=0 处大幅放松(×0.1)，在 ω=0.1π 处回到正常约束(×1.0)
+        relax(low_freq_idx) = max(0.1, 1.0 - 3.0 * (1 - omega_col(low_freq_idx) / (0.1*pi)));
     end
 
     % 对 g2 应用松弛
@@ -143,7 +143,7 @@ function [g1, g2, max_g1, max_g2] = RST_constraints(theta, sys_info)
     % g1 低频也适当放松（但程度较轻）
     relax_g1 = ones(size(omega_col));
     if any(low_freq_idx)
-        relax_g1(low_freq_idx) = 1.0 - 0.2 * (1 - omega_col(low_freq_idx) / (0.1*pi));
+        relax_g1(low_freq_idx) = max(0.3, 1.0 - 0.5 * (1 - omega_col(low_freq_idx) / (0.1*pi)));
     end
     g1 = g1 .* relax_g1;
 
@@ -172,7 +172,7 @@ end
 % =========================================================================
 function mag = compute_Sd_mag_constraint(A, B, d, P_D, H_R, H_S, ...
                                           X_coeff, Y_coeff, omega, nFreq)
-% COMPUTE_SD_MAG_CONSTRAINT 计算灵敏度函数幅值
+% COMPUTE_SD_MAG_CONSTRAINT 计算灵敏度函数幅值（向量化版本）
 %   S_d(e^{jω}) = (A(e^{jω}) / P_D(e^{jω})) * (X(e^{jω}) / Y(e^{jω}))
 %
 %   输出:
@@ -181,42 +181,33 @@ function mag = compute_Sd_mag_constraint(A, B, d, P_D, H_R, H_S, ...
 %   注意: 此处不直接使用 d，S_d 表达式中不含延迟因子 z^{-d}
 
     if nargin < 9, nFreq = length(omega); end
-    mag = zeros(1, nFreq);
 
     % |S_d| 饱和上限，防止 Y(z) 根靠近单位圆时幅度爆炸
     S_D_MAG_MAX = 100;
 
-    nA = length(A) - 1;
+    nA  = length(A) - 1;
     nPD = length(P_D) - 1;
-    nX = length(X_coeff) - 1;
-    nY = length(Y_coeff) - 1;
+    nX  = length(X_coeff) - 1;
+    nY  = length(Y_coeff) - 1;
 
-    for k = 1:nFreq
-        w = omega(k);
+    % 向量化频率响应: 构建 exp(-1j * ω_i * k) 矩阵，一步完成所有频点计算
+    omega_col = omega(:);  % nFreq × 1
 
-        % A(e^{jω})
-        A_val = sum(A .* exp(-1j * w * (0:nA)));
+    A_val    = exp(-1j * omega_col * (0:nA))  * A(:);        % nFreq × 1
+    P_D_val  = exp(-1j * omega_col * (0:nPD)) * P_D(:);      % nFreq × 1
+    X_val    = exp(-1j * omega_col * (0:nX))  * X_coeff(:);  % nFreq × 1
+    Y_val    = exp(-1j * omega_col * (0:nY))  * Y_coeff(:);  % nFreq × 1
 
-        % P_D(e^{jω})
-        P_D_val = sum(P_D .* exp(-1j * w * (0:nPD)));
-
-        % X(e^{jω})
-        X_val = sum(X_coeff .* exp(-1j * w * (0:nX)));
-
-        % Y(e^{jω})
-        Y_val = sum(Y_coeff .* exp(-1j * w * (0:nY)));
-
-        % 避免除零并钳制 |Y| 最小值，防止 |S_d| 爆炸
-        Y_min_mag = 1e-3;
-        if abs(Y_val) < Y_min_mag
-            Y_val = Y_min_mag * exp(1j * angle(Y_val + 1e-12));
-        end
-        if abs(P_D_val) < 1e-12
-            P_D_val = 1e-12;
-        end
-
-        % S_d(e^{jω})，钳制幅值上限
-        S_d_val = (A_val / P_D_val) * (X_val / Y_val);
-        mag(k) = min(abs(S_d_val), S_D_MAG_MAX);
+    % 避免除零并钳制 |Y| 最小值，防止 |S_d| 爆炸
+    Y_min_mag = 1e-3;
+    small_Y = abs(Y_val) < Y_min_mag;
+    if any(small_Y)
+        Y_val(small_Y) = Y_min_mag * exp(1j * angle(Y_val(small_Y) + 1e-12));
     end
+    P_D_val(abs(P_D_val) < 1e-12) = 1e-12;
+
+    % S_d(e^{jω})，钳制幅值上限
+    S_d_val = (A_val ./ P_D_val) .* (X_val ./ Y_val);
+    mag_val = min(abs(S_d_val), S_D_MAG_MAX);
+    mag = mag_val(:).';  % 确保输出为行向量
 end

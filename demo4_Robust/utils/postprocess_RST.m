@@ -51,6 +51,7 @@ function [R, S, T, Syp] = postprocess_RST(theta_opt, sys_info, varargin)
         scriptDir = pwd;
     end
     addpath(fullfile(scriptDir, '..', 'functions'));
+    addpath(scriptDir);  % 确保 ./utils 中 bezoutd_reg 等文件可解析
 
     % 确保 theta_opt 为列向量
     theta_opt = theta_opt(:);
@@ -112,21 +113,22 @@ function [R, S, T, Syp] = postprocess_RST(theta_opt, sys_info, varargin)
     % =====================================================================
     % 步骤3：求解 Bezout 方程
     % =====================================================================
-    % 使用 bezoutd: [Rp, Sp] = bezoutd(A, B, Hs, Hr, P)
-    % 其中 bezoutd 内部计算 A*Hs*Sp + B*Hr*Rp = P
+    % 使用 bezoutd_reg（改进版）: [Rp, Sp] = bezoutd_reg(A, B, Hs, Hr, P)
+    %   - 原点填充替代 rmin=1e-16，消除大规模系统 Sylvester 矩阵病态
+    %   - 内置 Tikhonov 正则化自动回退
     % 注意: 这里的 A, B 是原始对象多项式(不含延迟)
 
     try
-        % 注意: bezoutd 要求 B 包含延迟前导零，使用 B_tilde（已含 z^{-d}）
-        [R_raw, S_raw] = bezoutd(A_sys, B_tilde, H_S, H_R, P_DX);
+        % 注意: bezoutd_reg 要求 B 包含延迟前导零，使用 B_tilde（已含 z^{-d}）
+        [R_raw, S_raw] = bezoutd_reg(A_sys, B_tilde, H_S, H_R, P_DX);
 
         % 去除前导零 (trim from left)
         S = trimPolynomial(S_raw, "left");
         R = trimPolynomial(R_raw, "left");
 
-        fprintf('\nBezout 方程求解成功 (bezoutd).\n');
+        fprintf('\nBezout 方程求解成功 (bezoutd_reg).\n');
     catch ME
-        fprintf('\nbezoutd 求解失败: %s\n', ME.message);
+        fprintf('\nbezoutd_reg 求解失败: %s\n', ME.message);
         fprintf('尝试 Sylvester 矩阵备选方法...\n');
 
         [S, R] = solve_bezout_sylvester(A_sys, B_tilde, H_S, H_R, P_DX);
@@ -253,7 +255,7 @@ function [R, S, T, Syp] = postprocess_RST(theta_opt, sys_info, varargin)
         lower_bound(lower_bound < 0) = 0;
 
         % ---- 图1: 灵敏度函数 Bode 图 (含约束边界) ----
-        figure('Name', 'Sensitivity Function', 'Position', [100, 100, 700, 500]);
+        figure('Name', 'Sensitivity Function');
 
         semilogx(omega(2:end), 20*log10(Syp_mag(2:end)), 'b-', 'LineWidth', 1.5);
         hold on;
@@ -273,7 +275,7 @@ function [R, S, T, Syp] = postprocess_RST(theta_opt, sys_info, varargin)
         end
 
         % ---- 图2: 互补灵敏度函数 ----
-        figure('Name', 'Complementary Sensitivity', 'Position', [150, 150, 700, 500]);
+        figure('Name', 'Complementary Sensitivity');
 
         semilogx(omega(2:end), 20*log10(T_mag(2:end)), 'b-', 'LineWidth', 1.5);
         xlabel('Frequency (rad/sample)');
@@ -344,7 +346,7 @@ function [R, S, T, Syp] = postprocess_RST(theta_opt, sys_info, varargin)
         % ---- 图3: 阶跃响应 ----
         t = (0:N_sim-1) * Ts_sim;
 
-        figure('Name', 'Step Response', 'Position', [200, 200, 900, 400]);
+        figure('Name', 'Step Response');
 
         subplot(2,1,1);
         stairs(t, y, 'b-', 'LineWidth', 1.5);
@@ -372,7 +374,7 @@ function [R, S, T, Syp] = postprocess_RST(theta_opt, sys_info, varargin)
         end
 
         % ---- 图4: 零极点图 ----
-        figure('Name', 'Pole-Zero Map', 'Position', [250, 250, 500, 500]);
+        figure('Name', 'Pole-Zero Map');
 
         % 开环零极点
         ol_zeros = roots(B_sys);

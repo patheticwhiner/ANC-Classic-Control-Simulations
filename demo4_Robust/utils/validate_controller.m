@@ -192,7 +192,7 @@ fprintf('\n通过率: %d/%d\n', pass_count, total_checks);
 
 % === 可选绘图 ===
 if plot_flag
-    figure('Name', 'Controller Validation', 'Position', [100, 100, 1200, 800]);
+    figure('Name', 'Controller Validation');
 
     % 子图1: 灵敏度函数 Bode 图
     subplot(2,3,1);

@@ -18,6 +18,7 @@ clear; close all; clc;
 
 % 确保路径可达
 addpath('../functions');
+addpath('./utils');
 addpath('.');
 
 fprintf('===========================================================\n');
@@ -28,9 +29,9 @@ fprintf('===========================================================\n\n');
 % 共享系统定义（与 run_RST_eMOPSO.m 保持一致）
 % ====================================================================
 
-% 被控对象定义
-B = [0.1, 0.05];
-A = [1, -1.5, 0.7];
+% 被控对象定义（与 run_RST_eMOPSO.m 保持一致）
+B = [0.2, 0.15];
+A = [1, -1.2, 0.45];
 d = 1;
 Ts = 1;
 
@@ -56,12 +57,12 @@ beta  = sys_zeros(abs(sys_zeros) > 1);
 alpha = sys_poles(abs(sys_poles) > 1);
 
 if isempty(beta)
-    fprintf('注意: 无不稳定零点，使用虚拟零点 β=1e6.\n');
-    beta = 1e6;
+    fprintf('注意: 无不稳定零点，使用虚拟零点 β=1.05.\n');
+    beta = 1.05;
 end
 if isempty(alpha)
-    fprintf('注意: 无不稳定极点，使用虚拟极点 α=1.0001.\n');
-    alpha = 1.0001;
+    fprintf('注意: 无不稳定极点，使用虚拟极点 α=0.95.\n');
+    alpha = 0.95;
 end
 
 % RST 预设参数
@@ -78,14 +79,14 @@ nX = max(2, length(B) + length(H_R) - 1 - 1);
 nY = max(2, length(A) + length(H_S) - 1 - 1);
 
 n_var = nX + nY;
-n_obj = length(beta) + 1;
+n_obj = length(beta) + 2;   % f_beta + f_delay + f_bezout (与 RST_objective.m 输出一致)
 
 lb = -0.99 * ones(1, n_var);
 ub =  0.99 * ones(1, n_var);
 
 % 基准 options
 options = struct();
-options.k_max       = 150;
+options.k_max       = 100;
 options.epsilon     = 0.05;
 options.n_pop       = 50;
 options.c1          = 1.5;
@@ -108,7 +109,7 @@ sys_info.nY    = nY;
 sys_info.beta  = beta(:);
 sys_info.alpha = alpha(:);
 sys_info.Ts    = Ts;
-sys_info.nFreq = 2000;
+sys_info.nFreq = 500;
 
 % 包装目标函数
 obj_func = @(theta) wrapped_objective(theta, sys_info);
@@ -121,7 +122,7 @@ fprintf('\n决策变量维度: %d, 目标函数数量: %d\n', n_var, n_obj);
 
 fprintf('\n========== 第1节: ε 值敏感性分析 ==========\n');
 
-epsilon_values = [0.001, 0.01, 0.05, 0.1, 0.2];
+epsilon_values = [0.01, 0.05, 0.1];
 n_eps = length(epsilon_values);
 
 all_eps_results = cell(n_eps, 1);
@@ -149,7 +150,7 @@ for i = 1:n_eps
 end
 
 % ε 值分析绘图
-figure('Name', 'ε Sensitivity Analysis', 'Position', [50, 50, 1300, 600]);
+figure('Name', 'ε Sensitivity Analysis');
 colors = lines(n_eps);
 
 % 子图1: Pareto 前沿对比
@@ -218,7 +219,7 @@ end
 
 fprintf('\n========== 第2节: 种群大小敏感性分析 ==========\n');
 
-pop_values = [20, 50, 100, 200];
+pop_values = [20, 50, 100];
 n_pop_tests = length(pop_values);
 
 all_pop_results = cell(n_pop_tests, 1);
@@ -230,9 +231,9 @@ for i = 1:n_pop_tests
     opts.epsilon = 0.05;  % 固定 ε = 0.05（推荐值）
     opts.n_pop = pop_values(i);
     % 调整最大迭代使总评估次数大致可比:
-    % n_pop=50, k_max=150 → total evals = 7500
+    % n_pop=50, k_max=100 → total evals = 5000
     % 对于其他 n_pop 按比例调整
-    opts.k_max = round(7500 / pop_values(i));
+    opts.k_max = round(5000 / pop_values(i));
 
     tic;
     [archive, archive_f, history] = eMOPSO_core(obj_func, n_var, n_obj, lb, ub, opts);
@@ -252,7 +253,7 @@ for i = 1:n_pop_tests
 end
 
 % 种群大小分析绘图
-figure('Name', 'Population Size Analysis', 'Position', [100, 100, 1300, 600]);
+figure('Name', 'Population Size Analysis');
 colors_pop = lines(n_pop_tests);
 
 % 子图1: Pareto 前沿对比
@@ -326,24 +327,21 @@ fprintf('===========================================================\n\n');
 
 % 从 ε 分析中找最佳 ε（综合考虑解数量和解质量）
 fprintf('【ε 值推荐】\n');
-fprintf('  ε = 0.001: 最细粒度，Pareto 解数最多但计算量大\n');
-fprintf('  ε = 0.01:  较细粒度，解数多于 ε=0.001 的存档限制上限\n');
+fprintf('  ε = 0.01:  较细粒度，Pareto 解数较多\n');
 fprintf('  ε = 0.05:  平衡点 ★推荐★，解数适中，前沿覆盖好\n');
-fprintf('  ε = 0.10:  较粗粒度，前沿细节丢失\n');
-fprintf('  ε = 0.20:  粗粒度，前沿过于稀疏\n');
+fprintf('  ε = 0.10:  较粗粒度，前沿细节减少但计算更快\n');
 fprintf('  推荐 ε = 0.05 (兼顾前沿质量与计算效率)\n\n');
 
 fprintf('【种群大小推荐】\n');
 fprintf('  N=20:  收敛快但前沿多样性不足\n');
 fprintf('  N=50:  推荐起点，性价比高 ★推荐★\n');
 fprintf('  N=100: 前沿质量好，但计算时间增加约2倍\n');
-fprintf('  N=200: 前沿最丰富，但计算量显著增大\n');
 fprintf('  推荐 n_pop = 50 (针对本问题规模)\n\n');
 
 fprintf('【推荐配置】\n');
 fprintf('  ε     = 0.05\n');
 fprintf('  n_pop = 50\n');
-fprintf('  k_max = 150\n');
+fprintf('  k_max = 100\n');
 fprintf('  c1    = 1.5\n');
 fprintf('  c2    = 1.7\n');
 fprintf('  w     = 0.9 → 0.4 (线性递减)\n');
@@ -372,9 +370,25 @@ fprintf('\nBenchmark 结果已保存到: output/benchmark_results.mat\n');
 
 function phi = wrapped_objective(theta, sys_info)
 % WRAPPED_OBJECTIVE  包装目标函数并施加约束惩罚
+%   调用 RST_objective 计算原始目标值，再调用 RST_constraints 计算约束违例，
+%   最后使用 penalty_function 施加惩罚。
+%
+%   输入:
+%     theta    - 决策变量向量 (列向量)
+%     sys_info - 系统信息结构体
+%
+%   输出:
+%     phi      - 惩罚后的增广目标函数值 (列向量)
 
+    % 确保 theta 为列向量
     theta = theta(:);
-    f = RST_objective(theta, sys_info);
+
+    % 计算原始目标函数，放大1000倍以匹配 epsilon=0.05 的量级
+    f = RST_objective(theta, sys_info) * 1000;
+
+    % 计算约束
     [g1, g2] = RST_constraints(theta, sys_info);
+
+    % 施加惩罚（使用 penalty_function 默认 Lambda=0.5）
     phi = penalty_function(f, g1, g2);
 end

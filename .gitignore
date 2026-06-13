@@ -1,3 +1,7 @@
 .slx
 .slxc
 slprj/
+*.mat
+*.asv
+*.m~
+output/

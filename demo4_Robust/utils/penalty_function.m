@@ -14,8 +14,8 @@ function phi = penalty_function(f, g1, g2, Lambda, kappa)
 %     phi     - 惩罚后的增广目标函数值向量 (与 f 同维度)
 %
 %   惩罚公式:
-%     δ = Lambda * ( mean(max(0, g1)^κ) + mean(max(0, g2)^κ) )
-%     φ = f + δ
+%     δ = mean(max(0, g1)^κ) + mean(max(0, g2)^κ)
+%     φ = f .* (1 + Lambda * δ)
 %
 %   其中:
 %     - max(0, g) 只对违例部分进行惩罚（g > 0）
@@ -24,8 +24,8 @@ function phi = penalty_function(f, g1, g2, Lambda, kappa)
 %     - κ = 2: 二次惩罚（对严重违例更敏感）
 %
 %   使用建议:
-%     - Lambda 应适中，避免惩罚项淹没目标函数
-%     - 典型值: Lambda ∈ [1, 100], kappa = 1
+%     - Lambda 控制乘性惩罚强度，避免惩罚项淹没目标函数
+%     - 典型值: Lambda ∈ [0.1, 2], kappa = 1
 %     - 若优化结果违例严重，可适度增大 Lambda
 %     - 若 Archive 退化（解数量过少），减小 Lambda
 %
@@ -33,9 +33,9 @@ function phi = penalty_function(f, g1, g2, Lambda, kappa)
 %     f = [0.5; 0.3];           % 2个目标
 %     g1 = [-0.1; 0.2; 0.05];   % 有2处违例
 %     g2 = [-0.3; -0.1; -0.2];  % 无违例
-%     phi = penalty_function(f, g1, g2, 10, 1);
-%     % phi ≈ [0.5+10*mean(0.2+0.05); 0.3+10*mean(0.2+0.05)]
-%     % phi ≈ [0.5+0.83; 0.3+0.83] = [1.33; 1.13]
+%     phi = penalty_function(f, g1, g2, 0.5, 1);
+%     % phi ≈ [0.5*(1+0.5*mean(0.2+0.05)); 0.3*(1+0.5*mean(0.2+0.05))]
+%     % phi ≈ [0.5*1.0625; 0.3*1.0625] = [0.531; 0.319]
 
     % =====================================================================
     % 输入参数验证
@@ -47,7 +47,7 @@ function phi = penalty_function(f, g1, g2, Lambda, kappa)
 
     % 设置默认值
     if nargin < 4 || isempty(Lambda)
-        Lambda = 10;
+        Lambda = 0.5;
     end
     if nargin < 5 || isempty(kappa)
         kappa = 1;
@@ -80,13 +80,13 @@ function phi = penalty_function(f, g1, g2, Lambda, kappa)
     penalty_g1 = mean(g1_violation .^ kappa);
     penalty_g2 = mean(g2_violation .^ kappa);
 
-    delta = Lambda * (penalty_g1 + penalty_g2);
+    delta = penalty_g1 + penalty_g2;
 
     % =====================================================================
     % 计算增广目标值
     % =====================================================================
-    % 惩罚项作为标量加到每个目标分量上
-    phi = f + delta;
+    % 乘性/相对惩罚: 惩罚项作为乘性因子，避免淹没目标值
+    phi = f .* (1 + Lambda * delta);
 
     % =====================================================================
     % 诊断信息（仅在违例严重时给出警告）
