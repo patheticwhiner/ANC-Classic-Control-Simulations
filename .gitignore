@@ -16,7 +16,6 @@ output/
 *.fdb_latexmk
 *.fls
 *.toc
-*.bbl
 
 # PDF (built from .tex)
 *.pdf
@@ -26,3 +25,6 @@ output/
 
 # Office temp files
 ~$*
+
+# Large binary data (not version-controlled)
+sysid_models/

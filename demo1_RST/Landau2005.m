@@ -29,7 +29,14 @@ disturbance = filter(Np_all, Dp_all, [1, zeros(1, length(t)-1)]);
 figure; plot(t, disturbance); %[output:9a619a82]
 %%
 %[text] ### 1.2 标称控制器设计
-% 系统定义
+% 系统定义 (也可独立加载, 不依赖 Carmona2000.m 的变量继承)
+modelFile = fullfile('..', 'dataset', 'syn_Carmona2000_7th.mat');
+load(modelFile, 'model');
+A_coeffs = model.A_coeffs;
+B_coeffs = model.B_coeffs;
+d = model.d_delay;
+Ts = model.Ts;
+Fs = model.fs;
 Ao = A_coeffs;
 Bo = [zeros(1,d),B_coeffs];
 Bo_star = B(2:end);

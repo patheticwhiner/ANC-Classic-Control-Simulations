@@ -16,27 +16,36 @@ function info = DataManager(dataSource)
 %     以及该类型对应的数据字段 (见下方各 case)
 %
 % 可用数据源:
-%   'armax_30303022'   - ARMAX(30,30,30,22) 辨识模型，实测声学管道 @48kHz
-%                        字段: .model (idpoly), .orders, .fs
-%   'syn_whitenoise'   - 合成带限白噪声干扰模型 (状态空间)
-%                        字段: .ss (ss对象, SISO), .fs
-%   'syn_bpf'          - 合成带通滤波器被控对象模型 (状态空间)
-%                        字段: .ss (ss对象, SISO), .fs
-%   'lms_sysid'        - LMS系统辨识实验数据 (4通道, 2026-01-20)
-%                        字段: .pri_err, .pri_ref, .sec_err, .sec_ref (各为struct)
-%   'raw_dspace'       - dSPACE采集原始信号数据
-%                        字段: .signal.x (输入), .y (输出), .t (时间), .fs
+%   'armax_30303022'      - ARMAX(30,30,30,22) 辨识模型，实测声学管道 @48kHz
+%   'syn_TAC2015_3rd'     - Jafari TAC 2015 离散AVC (3阶, Ts=1/480)
+%   'syn_JVC2017_3rd'     - Jafari JVC 2017 连续CC  (3阶, fs=10k)
+%   'syn_JVC2017_6th'     - Jafari JVC 2017 高阶示例 (6阶, 连续)
+%   'syn_Bai1997_4th'     - Bai 1997 耳机H∞模型   (4阶, fs=4k)
+%   'syn_Carmona2000_7th' - Carmona 2000 管道ANC   (7阶, Fs=2k)
+%   'syn_MassSpringDamper_2nd' - 质量-弹簧-阻尼器  (2阶, 连续)
+%   'syn_RSTtoy_2nd'      - RST教学模型           (2阶, Ts=1)
+%   'syn_whitenoise'      - 合成带限白噪声干扰模型 (状态空间)
+%   'syn_bpf'             - 合成带通滤波器被控对象模型 (状态空间)
+%   'lms_sysid'           - LMS系统辨识实验数据 (4通道, 2026-01-20)
+%   'raw_dspace'          - dSPACE采集原始信号数据
 
     % 数据集根目录
     dsDir = fileparts(mfilename('fullpath'));
 
     % 可用数据源注册表
     sources = struct(...
-        'armax_30303022', struct('file', 'armax_30303022_2026-01-20.mat', 'type', 'armax_model'), ...
-        'syn_whitenoise', struct('file', 'syn_whitenoise_ssmodel.mat',     'type', 'ss_model'), ...
-        'syn_bpf',        struct('file', 'syn_bpf_ssmodel.mat',            'type', 'ss_model'), ...
-        'lms_sysid',      struct('file', 'lms_sysid_2026-01-20.mat',       'type', 'lms_data'), ...
-        'raw_dspace',     struct('file', 'raw_dspace_primpath.mat',        'type', 'raw_signal') ...
+        'armax_30303022',       struct('file', 'armax_30303022_2026-01-20.mat', 'type', 'armax_model'), ...
+        'syn_TAC2015_3rd',      struct('file', 'syn_TAC2015_3rd.mat',           'type', 'syn_tf'), ...
+        'syn_JVC2017_3rd',      struct('file', 'syn_JVC2017_3rd.mat',           'type', 'syn_tf'), ...
+        'syn_JVC2017_6th',      struct('file', 'syn_JVC2017_6th.mat',           'type', 'syn_tf'), ...
+        'syn_Bai1997_4th',      struct('file', 'syn_Bai1997_4th.mat',           'type', 'syn_tf'), ...
+        'syn_Carmona2000_7th',  struct('file', 'syn_Carmona2000_7th.mat',       'type', 'syn_tf'), ...
+        'syn_MassSpringDamper_2nd', struct('file', 'syn_MassSpringDamper_2nd.mat', 'type', 'syn_tf'), ...
+        'syn_RSTtoy_2nd',       struct('file', 'syn_RSTtoy_2nd.mat',            'type', 'syn_tf'), ...
+        'syn_whitenoise',       struct('file', 'syn_whitenoise_ssmodel.mat',    'type', 'ss_model'), ...
+        'syn_bpf',              struct('file', 'syn_bpf_ssmodel.mat',           'type', 'ss_model'), ...
+        'lms_sysid',            struct('file', 'lms_sysid_2026-01-20.mat',      'type', 'lms_data'), ...
+        'raw_dspace',           struct('file', 'raw_dspace_primpath.mat',       'type', 'raw_signal') ...
     );
 
     % 无参数调用：列出所有可用数据源
@@ -81,6 +90,21 @@ function info = DataManager(dataSource)
 
             fprintf('  ARMAX(%d,%d,%d,%d), fs=%d Hz\n', ...
                 info.orders(1), info.orders(2), info.orders(3), info.orders(4), info.fs);
+
+        case 'syn_tf'
+            % 合成传递函数模型 (论文/教材中的理论被控对象)
+            info.G0     = data.model.G0;       % tf/zpk 对象
+            info.domain = data.model.domain;   % 'continuous' | 'discrete'
+            info.orders = data.model.orders;
+            info.source = data.model.source;
+            info.desc   = data.model.desc;
+            if isfield(data.model, 'Ts'),      info.Ts = data.model.Ts; end
+            if isfield(data.model, 'fs'),      info.fs = data.model.fs; end
+            if isfield(data.model, 'fs_nominal'), info.fs = data.model.fs_nominal; end
+            if isfield(data.model, 'G0_tf'),   info.G0_tf = data.model.G0_tf; end
+            if isfield(data.model, 'G0_zpk'),  info.G0_zpk = data.model.G0_zpk; end
+
+            fprintf('  %s (%s, %s)\n', data.model.name, data.model.domain, data.model.source);
 
         case 'ss_model'
             % 合成状态空间模型: 文件直接导出 (Af,Bf,Cf)/(Aw,Bw,Cw) 矩阵

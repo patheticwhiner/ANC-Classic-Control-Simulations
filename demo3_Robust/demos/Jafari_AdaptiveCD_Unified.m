@@ -21,11 +21,12 @@ cfg.thetaMax   = 5;
 cfg.rng_seed   = 42;
 
 %% ====== Section 0: 共享题设 ======
-fprintf('===== 共享题设: G0=0.5(s-0.2)/(s²+s+1.25) [离散域 CD] =====\n');
+modelFile = fullfile('..', '..', 'dataset', 'syn_JVC2017_3rd.mat');
+load(modelFile, 'model');
+G0 = model.G0;
+fprintf('===== 共享题设: G0=0.5(s-0.2)/(s^2+s+1.25) [离散域 CD] =====\n');
 s = tf('s');
 Ts = 1/cfg.fs;
-
-G0 = 0.5*(s-0.2)/(s^2+s+1.25);
 F = cfg.kappa0 * 2*cfg.alpha_val^2*(s^2+s+1.25)/((s+cfg.alpha_val)^2*(s+0.2));
 
 omega = [70, 187];   % rad/s

@@ -5,10 +5,12 @@
 clear; clc; close all;
 
 % 离散系统G0(z)
-Ts = 1/480;
+modelFile = fullfile('..', 'dataset', 'syn_TAC2015_3rd.mat');
+load(modelFile, 'model');
+G0 = model.G0;
+Ts = model.Ts;
+fs = model.fs;
 z = tf('z', Ts);
-fs = 1/Ts;
-G0 = (-0.00146*(z-0.1438)*(z-1)) / ((z - 0.7096)*(z^2 - 0.04369*z + 0.01392));
 
 % F(z) = 1
 F = tf(1,1,Ts);

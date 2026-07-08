@@ -78,11 +78,13 @@ function RST_engine(case_key)
 
     if strcmp(case_key, 'rst_toy')
         % 二阶教学模型
-        B  = [0.2, 0.15];
-        A  = [1, -1.2, 0.45];
-        d  = 1;
-        Ts = 1;
-        fprintf('模型来源: 二阶教学模型 (内联定义)\n');
+        modelFile = fullfile(script_dir, '..', 'dataset', 'syn_RSTtoy_2nd.mat');
+        load(modelFile, 'model');
+        B  = model.B_poly;
+        A  = model.A_poly;
+        d  = model.d_delay;
+        Ts = model.Ts;
+        fprintf('模型来源: 二阶教学模型 (syn_RSTtoy_2nd.mat)\n');
     else  % rst_armax
         % 加载完整 ARMAX(30,30,30,22) 实测模型（不降阶）
         [B, A, d, Ts] = load_armax_full();

@@ -28,11 +28,12 @@ fprintf('===== Jafari 2015 TAC 离散 AVC 统一对比 =====\n');
 fprintf('Ts=%.4f, N_fir=%d, ω₀=%.4f rad/sample\n', cfg.Ts, cfg.N_fir, cfg.w_interp);
 
 %% ====== Section 0: 共享题设 ======
-Ts = cfg.Ts;
-fs = 1/Ts;
+modelFile = fullfile('..', '..', 'dataset', 'syn_TAC2015_3rd.mat');
+load(modelFile, 'model');
+G0 = model.G0;
+Ts = model.Ts;
+fs = model.fs;
 z = tf('z', Ts);
-
-G0 = (-0.00146*(z-0.1438)*(z-1)) / ((z - 0.7096)*(z^2 - 0.04369*z + 0.01392));
 [num0, den0] = tfdata(G0, 'v');
 
 % 扰动定义 (共用)

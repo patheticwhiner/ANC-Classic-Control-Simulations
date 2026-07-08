@@ -5,11 +5,10 @@ clear; close all; clc;
 
 %% 1. 系统定义
 % 被控对象参数
-z = [-3.0841, 1.0320, -0.4387, 0.0034];
-p = [0.6612+0.3483i, 0.6612-0.3483i, -0.4426+0.3324i, -0.4426-0.3324i];
-k = 0.3921;
-P_zp = zpk(z, p, k);
-P_tf = tf(P_zp);
+modelFile = fullfile('..', '..', 'dataset', 'syn_Bai1997_4th.mat');
+load(modelFile, 'model');
+P_zp = model.G0_zpk;
+P_tf = model.G0_tf;
 
 
 

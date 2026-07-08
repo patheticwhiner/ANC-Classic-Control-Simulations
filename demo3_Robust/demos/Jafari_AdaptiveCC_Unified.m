@@ -23,9 +23,12 @@ cfg.thetaMax   = 5;        % 参数投影界
 cfg.rng_seed   = 42;       % 随机数种子
 
 %% ====== Section 0: 共享题设 ======
-fprintf('===== 共享题设: G0=0.5(s-0.2)/(s²+s+1.25) =====\n');
+modelFile = fullfile('..', '..', 'dataset', 'syn_JVC2017_3rd.mat');
+load(modelFile, 'model');
+G0 = model.G0;
+fs_nominal = model.fs_nominal;
+fprintf('===== 共享题设: G0=0.5(s-0.2)/(s^2+s+1.25) =====\n');
 s = tf('s');
-G0 = 0.5*(s-0.2)/(s^2+s+1.25);
 
 % F(s) 设计: RHP 零点镜像反射 + 低通
 F = cfg.kappa0 * 2*cfg.alpha_val^2*(s^2+s+1.25)/((s+cfg.alpha_val)^2*(s+0.2));

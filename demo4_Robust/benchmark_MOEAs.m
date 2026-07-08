@@ -30,10 +30,12 @@ fprintf('===========================================================\n\n');
 % ====================================================================
 
 % 被控对象定义（与 run_RST_eMOPSO.m 保持一致）
-B = [0.2, 0.15];
-A = [1, -1.2, 0.45];
-d = 1;
-Ts = 1;
+modelFile = fullfile('..', 'dataset', 'syn_RSTtoy_2nd.mat');
+load(modelFile, 'model');
+B = model.B_poly;
+A = model.A_poly;
+d = model.d_delay;
+Ts = model.Ts;
 
 fprintf('被控对象: ');
 fprintf('G(z) = z^{-%d} * (', d);

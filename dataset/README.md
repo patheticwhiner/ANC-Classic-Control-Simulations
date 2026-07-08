@@ -20,13 +20,29 @@ info = DataManager('raw_dspace');       % dSPACE采集原始信号
 
 ## 模型清单
 
+### 实测模型
+
 | 数据源 | 文件名 | 类型 | 描述 | 使用方 |
 |---|---|---|---|---|
 | `armax_30303022` | `armax_30303022_2026-01-20.mat` | ARMAX辨识模型 | ARMAX(30,30,30,22), 实测声学管道 @48kHz | demo2_LQG, demo3_Robust |
-| `syn_whitenoise` | `syn_whitenoise_ssmodel.mat` | 合成状态空间模型 | 带限白噪声干扰模型 (含plant+dist) | demo2_LQG |
-| `syn_bpf` | `syn_bpf_ssmodel.mat` | 合成状态空间模型 | 带通滤波器被控对象模型 | demo2_LQG |
 | `lms_sysid` | `lms_sysid_2026-01-20.mat` | LMS辨识数据 | 4通道系统辨识数据 (pri/sec × err/ref) | 待编写辨识脚本 |
 | `raw_dspace` | `raw_dspace_primpath.mat` | 原始信号 | dSPACE控制器导出的初级路径录音 | armax_identification.m |
+
+### 合成理论模型 (syn_*.mat)
+
+| 数据源 | 文件名 | 来源 | 阶数 | 域 | 使用方 |
+|---|---|---|---|---|---|
+| `syn_TAC2015_3rd` | `syn_TAC2015_3rd.mat` | Jafari et al. (2015) IEEE TAC | 3rd | 离散 Ts=1/480 | demo3_Robust ×3 |
+| `syn_JVC2017_3rd` | `syn_JVC2017_3rd.mat` | Jafari & Ioannou (2016) JVC | 3rd | 连续 fs=10k | demo3_Robust ×3 |
+| `syn_JVC2017_6th` | `syn_JVC2017_6th.mat` | Jafari & Ioannou (2016) JVC | 6th | 连续 | demo3_Robust |
+| `syn_Bai1997_4th` | `syn_Bai1997_4th.mat` | Bai & Lee (1997) IEEE SAP | 4th | 连续 fs=4k | demo3_Robust ×2 |
+| `syn_Carmona2000_7th` | `syn_Carmona2000_7th.mat` | Carmona & Alvarado (2000) ASME | 7th | 离散 Fs=2k | demo1_RST ×2 |
+| `syn_MassSpringDamper_2nd` | `syn_MassSpringDamper_2nd.mat` | 教材标准模型 | 2nd | 连续 | demo2_LQG |
+| `syn_RSTtoy_2nd` | `syn_RSTtoy_2nd.mat` | MOEA benchmark | 2nd | 离散 Ts=1 | demo4_Robust ×2 |
+| `syn_whitenoise` | `syn_whitenoise_ssmodel.mat` | 合成噪声模型 | — | SS | demo2_LQG |
+| `syn_bpf` | `syn_bpf_ssmodel.mat` | 合成滤波器模型 | — | SS | demo2_LQG |
+
+> **命名规范**: `syn_{来源}_{阶数}.mat`，来源含论文年份（如 TAC2015）作为文献标识，非数据采集日期。
 
 ## 工具脚本
 

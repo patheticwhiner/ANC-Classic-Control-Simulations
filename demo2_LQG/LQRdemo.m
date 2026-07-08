@@ -1,15 +1,9 @@
 %% 1 系统建模
-% 物理参数定义
-m = 1;   % 质量 (kg)
-k = 1;   % 弹簧刚度 (N/m)
-b = 0.5; % 阻尼系数 (N·s/m)
-
-% 状态空间方程
-A = [0 1; -k/m -b/m];  % 系统矩阵 [3](@ref)
-B = [0; 1/m];           % 输入矩阵 [3](@ref)
-C = eye(2);              % 输出矩阵（全状态观测）
-D = 0;                  % 直接传递项
-sys = ss(A, B, C, D);   % 构建状态空间模型
+% 物理参数: m=1kg, k=1N/m, b=0.5N·s/m
+modelFile = fullfile('..', 'dataset', 'syn_MassSpringDamper_2nd.mat');
+load(modelFile, 'model');
+A = model.A;  B = model.B;  C = model.C;  D = model.D;
+sys = model.sys;
 
 %% 2 权重矩阵设置
 Q = diag([10, 1]);  % 状态权重：更重视位置误差[2](@ref)

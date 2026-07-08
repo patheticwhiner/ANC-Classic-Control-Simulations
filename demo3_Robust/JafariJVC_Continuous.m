@@ -12,14 +12,15 @@
 %[text] 3. 假如$\\tilde{G\_0 } \\left(s\\right)${"editStyle":"visual"}有不稳定零点$s=\\sigma\_0 \\pm j\\omega\_0${"editStyle":"visual"}，则将其反射至LHP$s=-\\sigma\_0 \\pm j\\omega\_0${"editStyle":"visual"}.
 %[text] 4. 最后，取$F\\left(s\\right)=\\kappa\_0 \\frac{\\alpha^m }{{\\left(s+\\alpha \\right)}^m }\\tilde{\\;G\_0^{-1} } \\left(s\\right)${"editStyle":"visual"} \
 % 定义示例中的G0(s)
+modelFile_ex = fullfile('..', 'dataset', 'syn_JVC2017_6th.mat');
+load(modelFile_ex, 'model');
+G0 = model.G0;
 s = tf('s');
-G0 = (s*(s^2 + 4)*(s - 0.8)*(s + 1.4)) / ... %[output:group:0507619d] %[output:7904fca1]
-     ((s + 0.5)^3 * (s + 2)^2 * (s + 3)) %[output:group:0507619d] %[output:7904fca1]
-pzmap(G0); grid on; title('G_0(s) 零极点分布'); %[output:96f2f92d]
-bodemag(G0); grid on; title('G_0(s) 幅频响应'); %[output:672c56d6]
+pzmap(G0); grid on; title('G_0(s) 零极点分布');
+bodemag(G0); grid on; title('G_0(s) 幅频响应');
 % 设计滤波器F(s)
-F = designLTIFilter(G0, 1, 0.01, 300, 2, 300) %[output:2d6557db]
-bodemag(F*G0); grid on; title('F(s)G_0(s) 幅频响应 (频谱展平后)'); %[output:1225f7eb]
+F = designLTIFilter(G0, 1, 0.01, 300, 2, 300)
+bodemag(F*G0); grid on; title('F(s)G_0(s) 幅频响应 (频谱展平后)');
 %%
 %[text] ## 2 自适应控制器设计
 %[text] 文中的自适应滤波器设计为：$K\\left(s,\\theta \\;\\left(t\\right)\\right)=\\sum\_{k=0}^{N-1} \\theta\_k \\left(t\\right)\\frac{\\lambda^{N-k} }{{\\left(s+\\lambda \\right)}^{N-k} }${"editStyle":"visual"}。这一滤波器组由多个低通滤波器并联而成，每一级低通滤波器增益参数作为自适应参数。为便于理解参数对自适应参数的作用，提供绘图分析：
@@ -30,7 +31,7 @@ lambda = 500;
 s = tf('s');
 Ts = 1/10000; % 可选采样周期，若需离散化可用c2d
 
-figure; hold on; %[output:4d39a579]
+figure; hold on;
 colors = lines(N);
 for k = 1:N
     num = lambda^(N-k+1);
@@ -39,13 +40,13 @@ for k = 1:N
     [mag, phase, w] = bode(Hk, {1e-3, 1e3});
     mag = squeeze(mag);
     phase = squeeze(phase);
-    semilogx(w/(2*pi), 20*log10(mag), 'Color', colors(k,:), 'LineWidth', 2, ... %[output:4d39a579]
-        'DisplayName', sprintf('k=%d', k-1)); %[output:4d39a579]
+    semilogx(w/(2*pi), 20*log10(mag), 'Color', colors(k,:), 'LineWidth', 2, ...
+        'DisplayName', sprintf('k=%d', k-1));
 end
-xlabel('Frequency (Hz)'); %[output:4d39a579]
-ylabel('Magnitude (dB)'); %[output:4d39a579]
-title('自适应滤波器组 Bode 图'); %[output:4d39a579]
-legend show; grid on; %[output:4d39a579]
+xlabel('Frequency (Hz)');
+ylabel('Magnitude (dB)');
+title('自适应滤波器组 Bode 图');
+legend show; grid on;
 %[text] 为实现滤波器权重系数的自适应，设计如下的观测与参数自适应环节：
 %[text] 对$\\hat{z} =\\theta {\\;}^{\\top \\;} \\phi${"editStyle":"visual"}选用最小二乘算法
 %[text] $\\dot{P} \\left(t\\right)=-P\\frac{\\phi \\phi^{\\top \\;} }{1+\\gamma\_0 \\phi^{\\top \\;} \\phi \\;}P${"editStyle":"visual"}
@@ -56,7 +57,7 @@ legend show; grid on; %[output:4d39a579]
 %[text] ## 3 完整的数值仿真实验
 %[text] ### （1）问题设置
 clear; close all; clc;
-addpath('..\functions'); %[output:2d885302]
+addpath('..\functions');
 %% 参数设置
 fs = 10000;              % 采样频率 [Hz]
 Ts = 1/fs;              % 采样周期
@@ -65,8 +66,10 @@ Nsim = Tsim*fs;         % 仿真步数
 t = (0:Nsim-1)*Ts;
 
 %% 1. 定义名义模型 G0 和不确定性
+modelFile = fullfile('..', 'dataset', 'syn_JVC2017_3rd.mat');
+load(modelFile, 'model');
+G0 = model.G0;                              % 名义模型
 s = tf('s');
-G0 = 0.5*(s-0.2)/(s^2+s+1.25);           % 名义模型
 epsi = 0.001;           % 不确定性幅度
 Delta = epsi*s;
 G = minreal(G0*(1+Delta)); % 实际模型
@@ -83,8 +86,8 @@ end
 % 加入小随机噪声
 d = d + 0.02*randn(1,Nsim);
 
-bodemag(G); grid on; title('实际模型 G(s) 幅频响应'); %[output:2a3ac900]
-bodemag(1/(1+G)); grid on; title('灵敏度函数 S(s)=1/(1+G) 幅频响应'); %[output:499ad333]
+bodemag(G); grid on; title('实际模型 G(s) 幅频响应');
+bodemag(1/(1+G)); grid on; title('灵敏度函数 S(s)=1/(1+G) 幅频响应');
 %%
 %[text] ### （2）固定控制器设计
 %% 3. 控制器结构 (F(s)+K(s,theta))
@@ -94,13 +97,13 @@ delta0 = 0.;
 alpha = 500; 
 m = 2;
 omega_max = 600;
-F = designLTIFilter(G0, k0, delta0, alpha, m, omega_max) %[output:20870e0a]
+F = designLTIFilter(G0, k0, delta0, alpha, m, omega_max)
 % 离散化 F(s)
 Fd = c2d(F, Ts, 'tustin');
 [numF, denF] = tfdata(Fd, 'v');
 stateF = zeros(max(length(denF), length(numF))-1, 1);
-bodemag(F); grid on; title('固定滤波器 F(s) 幅频响应'); %[output:8f2b3c42]
-bodemag(F*G0); grid on; title('F(s)G_0(s) 幅频响应 (频谱展平后)'); %[output:3db63b5a]
+bodemag(F); grid on; title('固定滤波器 F(s) 幅频响应');
+bodemag(F*G0); grid on; title('F(s)G_0(s) 幅频响应 (频谱展平后)');
 %%
 %[text] ### （2）自适应控制器设计
 % K(s,theta) 参数化（简化成 FIR 滤波器）
@@ -120,10 +123,10 @@ G_zf1=zeros(max(length(numGd_s),length(denGd_s))-1,1); G0_zf1=zeros(nG0,1); F_zf
 y1=zeros(1,Nsim); u1=zeros(1,Nsim); plant1=zeros(1,Nsim); z_hist1=zeros(1,Nsim);
 theta_hist1=zeros(Nparam,Nsim); P_tr1=zeros(1,Nsim);
 
-fprintf('第1段 (Lambda+Euler): N=%d, lambda=%.0f, theta_max=%.0f, 扰动=[%.0f, %.0f] rad/s\\n', Nparam, lambda_val, theta_max_val, omega(1), omega(2)); %[output:428720f4]
+fprintf('第1段 (Lambda+Euler): N=%d, lambda=%.0f, theta_max=%.0f, 扰动=[%.0f, %.0f] rad/s\\n', Nparam, lambda_val, theta_max_val, omega(1), omega(2));
 lam1=zeros(Nparam,1); phi1=zeros(Nparam,1);
 
-for k = 2:Nsim %[output:group:149a58f5]
+for k = 2:Nsim
     [y_G_k, G_zf1] = filter(numGd_s, denGd_s, u1(k-1), G_zf1);
     plant1(k)=y_G_k; y1(k)=y_G_k+d(k);
     [G0_u_k, G0_zf1] = filter(numG0d_s, denG0d_s, u1(k-1), G0_zf1);
@@ -144,25 +147,25 @@ for k = 2:Nsim %[output:group:149a58f5]
     theta_hist1(:,k)=theta1; P_tr1(k)=trace(P_euler);
     [u1(k),F_zf1]=filter(numF,denF,-theta1.'*lam1,F_zf1);
     if mod(k,round(Nsim/4))==0
-        fprintf('  t=%.1fs: ||th||=%.3f, tr(P)=%.2e\n',t(k),thn,trace(P_euler)); %[output:8fab69d0]
+        fprintf('  t=%.1fs: ||th||=%.3f, tr(P)=%.2e\n',t(k),thn,trace(P_euler));
     end
-end %[output:group:149a58f5]
+end
 
 fin1=round(0.5*Nsim):Nsim;
 rms_y1=sqrt(mean(y1(fin1).^2)); rms_d=sqrt(mean(d(fin1).^2));
 supp1=20*log10(rms_y1/rms_d);
-fprintf('第1段(Lambda+Euler): 抑制=%.1f dB, ||th||=%.3f\n', supp1, norm(theta1)); %[output:774e3829]
+fprintf('第1段(Lambda+Euler): 抑制=%.1f dB, ||th||=%.3f\n', supp1, norm(theta1));
 
-figure('Name','第1段: Lambda+Euler 离散梯度法'); %[output:163b94ed]
-subplot(3,1,1); plot(t,d,'Color',[.7 .7 .7]); hold on; plot(t,plant1,'r--'); plot(t,y1,'b-'); %[output:163b94ed]
-xline(0.5*Tsim, 'k--', '稳态评估起点', 'LineWidth', 1); %[output:163b94ed]
-legend('d','G输出','y', 'Location', 'best'); %[output:163b94ed]
-title(sprintf('输出信号 (抑制 %.1f dB)', supp1)); grid on; %[output:163b94ed]
-subplot(3,1,2); plot(t,u1,'g-'); %[output:163b94ed]
-title(sprintf('控制输入 u(t) (RMS=%.2f)', rms(u1(fin1)))); grid on; %[output:163b94ed]
-subplot(3,1,3); plot(t,theta_hist1(1:5:end,:)'); %[output:163b94ed]
-title(sprintf('\\theta(t) 演化 (||\\theta||=%.2f)', norm(theta1))); grid on; %[output:163b94ed]
-sgtitle('Jafari JVC — 第1段: Lambda+Euler 离散梯度法'); %[output:163b94ed]
+figure('Name','第1段: Lambda+Euler 离散梯度法');
+subplot(3,1,1); plot(t,d,'Color',[.7 .7 .7]); hold on; plot(t,plant1,'r--'); plot(t,y1,'b-');
+xline(0.5*Tsim, 'k--', '稳态评估起点', 'LineWidth', 1);
+legend('d','G输出','y', 'Location', 'best');
+title(sprintf('输出信号 (抑制 %.1f dB)', supp1)); grid on;
+subplot(3,1,2); plot(t,u1,'g-');
+title(sprintf('控制输入 u(t) (RMS=%.2f)', rms(u1(fin1)))); grid on;
+subplot(3,1,3); plot(t,theta_hist1(1:5:end,:)');
+title(sprintf('\\theta(t) 演化 (||\\theta||=%.2f)', norm(theta1))); grid on;
+sgtitle('Jafari JVC — 第1段: Lambda+Euler 离散梯度法');
 
 %% ====== 第2段: Lambda基 + 归一化RLS ======
 P_rls=eye(Nparam)*0.5; theta_max_r=5; gamma0_r=1.0; theta2=zeros(Nparam,1);
@@ -171,10 +174,10 @@ G_zf2=zeros(max(length(numGd_s),length(denGd_s))-1,1); G0_zf2=zeros(nG0,1); F_zf
 y2=zeros(1,Nsim); u2=zeros(1,Nsim); plant2=zeros(1,Nsim);
 theta_hist2=zeros(Nparam,Nsim); P_tr2=zeros(1,Nsim);
 
-fprintf('\n===== 第2段: Lambda+RLS =====\n'); %[output:21a492a6]
+fprintf('\n===== 第2段: Lambda+RLS =====\n');
 lam2=zeros(Nparam,1); phi2=zeros(Nparam,1);
 
-for k=2:Nsim %[output:group:246aab80]
+for k=2:Nsim
     [y_G_k,G_zf2]=filter(numGd_s,denGd_s,u2(k-1),G_zf2);
     plant2(k)=y_G_k; y2(k)=y_G_k+d(k);
     [G0_u_k,G0_zf2]=filter(numG0d_s,denG0d_s,u2(k-1),G0_zf2);
@@ -198,25 +201,25 @@ for k=2:Nsim %[output:group:246aab80]
     theta_hist2(:,k)=theta2; P_tr2(k)=trace(P_rls);
     [u2(k),F_zf2]=filter(numF,denF,-theta2.'*lam2,F_zf2);
     if mod(k,round(Nsim/4))==0
-        fprintf('  t=%.1fs: ||th||=%.3f, tr(P)=%.2e\n',t(k),thn,trace(P_rls)); %[output:8efdd79c]
+        fprintf('  t=%.1fs: ||th||=%.3f, tr(P)=%.2e\n',t(k),thn,trace(P_rls));
     end
-end %[output:group:246aab80]
+end
 
 fin2=round(0.5*Nsim):Nsim;
 rms_y2=sqrt(mean(y2(fin2).^2)); supp2=20*log10(rms_y2/rms_d);
 rms_u2=sqrt(mean(u2(fin2).^2));
-fprintf('第2段(Lambda+RLS): 抑制=%.1f dB, ||th||=%.3f, uRMS=%.0f\n', supp2, norm(theta2), rms_u2); %[output:753360f9]
+fprintf('第2段(Lambda+RLS): 抑制=%.1f dB, ||th||=%.3f, uRMS=%.0f\n', supp2, norm(theta2), rms_u2);
 
-figure('Name','第2段: Lambda+RLS 归一化梯度法'); %[output:7f97099a]
-subplot(3,1,1); plot(t,d,'Color',[.7 .7 .7]); hold on; plot(t,plant2,'r--'); plot(t,y2,'b-'); %[output:7f97099a]
-xline(0.5*Tsim, 'k--', '稳态评估起点', 'LineWidth', 1); %[output:7f97099a]
-legend('d','G输出','y', 'Location', 'best'); %[output:7f97099a]
-title(sprintf('输出信号 (抑制 %.1f dB)', supp2)); grid on; %[output:7f97099a]
-subplot(3,1,2); plot(t,u2,'g-'); %[output:7f97099a]
-title(sprintf('控制输入 u(t) (RMS=%.2f)', rms_u2)); grid on; %[output:7f97099a]
-subplot(3,1,3); plot(t,theta_hist2(1:5:end,:)'); %[output:7f97099a]
-title(sprintf('\\theta(t) 演化 (||\\theta||=%.2f)', norm(theta2))); grid on; %[output:7f97099a]
-sgtitle('Jafari JVC — 第2段: Lambda+RLS 归一化梯度法'); %[output:7f97099a]
+figure('Name','第2段: Lambda+RLS 归一化梯度法');
+subplot(3,1,1); plot(t,d,'Color',[.7 .7 .7]); hold on; plot(t,plant2,'r--'); plot(t,y2,'b-');
+xline(0.5*Tsim, 'k--', '稳态评估起点', 'LineWidth', 1);
+legend('d','G输出','y', 'Location', 'best');
+title(sprintf('输出信号 (抑制 %.1f dB)', supp2)); grid on;
+subplot(3,1,2); plot(t,u2,'g-');
+title(sprintf('控制输入 u(t) (RMS=%.2f)', rms_u2)); grid on;
+subplot(3,1,3); plot(t,theta_hist2(1:5:end,:)');
+title(sprintf('\\theta(t) 演化 (||\\theta||=%.2f)', norm(theta2))); grid on;
+sgtitle('Jafari JVC — 第2段: Lambda+RLS 归一化梯度法');
 %%
 %[text] ## 5 附录
 function F = designLTIFilter(G0, k0, delta0, alpha, m, omega_max)

@@ -36,10 +36,9 @@
 %[text] ## 1 根据表格参数构建被控对象
 clear; close all; clc;
 % 1. 构建被控对象的传递函数
-z = [-3.0841, 1.0320, -0.4387, 0.0034];
-p = [0.6612+0.3483i, 0.6612-0.3483i, -0.4426+0.3324i, -0.4426-0.3324i];
-k = 0.3921;
-P_tf = zpk(z, p, k);
+modelFile = fullfile('..', 'dataset', 'syn_Bai1997_4th.mat');
+load(modelFile, 'model');
+P_tf = model.G0_zpk;
 
 % 权重函数定义 (基于MSBai1977论文)
 s = tf('s');

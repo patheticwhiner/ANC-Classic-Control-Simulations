@@ -36,17 +36,13 @@ addpath('..\functions'); %[output:3681ab83]
 clear; close all; clc;
 
 %% 定义多项式系数
-d = 6;
-% 分母多项式系数 (极点)
-A_coeffs = [1 -1.3941 -0.0389 +1.2131 -1.1895 +0.0430 +1.0517 -0.6267];
-
-% 分子多项式系数 (零点) 
-B_coeffs = [0.0304 +0.0709 -0.0947 -0.0170 -0.0104 -0.0787 +0.0414 +0.0380 ...
-            +0.0250 +0.0366 -0.0584 +0.0540 -0.0862 -0.6267];
-
-% 采样频率 (假设，可根据实际情况修改)
-Fs = 2000; % Hz
-Ts = 1/Fs;
+modelFile = fullfile('..', 'dataset', 'syn_Carmona2000_7th.mat');
+load(modelFile, 'model');
+A_coeffs = model.A_coeffs;
+B_coeffs = model.B_coeffs;
+d = model.d_delay;
+Fs = model.fs;
+Ts = model.Ts;
 
 % 定义频率点（单位 Hz）
 f_nom = [100, 200];    % 名义频率
