@@ -437,3 +437,49 @@ MarinoTomei_ANC_IMC_FXLMS_compare
 这个脚本可以说明“在更真实的反馈 ANC 管道里，Marino-Tomei 窄带内模和 IMC-FxLMS 的信息假设与适用范围不同”。它不能说明某个算法在所有 ANC 场景中绝对更好。
 
 如果换次级路径、换频率、加入饱和、加入次级路径建模误差或让噪声频率快速漂移，结论都可能变化。尤其是 Marino-Tomei 分支，只使用目标频率处的 `sign(Re[S])` 来决定自适应方向；当真实声学路径相位变化快、`Re[S]` 接近 0 或初始频率离真值太远时，不能保证靠调 `k` 和 `epsilon` 一定收敛。IMC-FxLMS 也不能免疫这些问题，只是它通过 filtered-x 结构显式使用了次级路径模型，通常更符合经典 ANC 实现习惯。
+
+---
+
+## 十一、参照 Akhtar IMC-FxLMS benchmark 的对照结果
+
+新增脚本 `MarinoTomei_AkhtarBenchmark_compare.m` 参照
+
+```text
+D:\Projects\NANC_Simulations\2012_IMCFxLMS_AkhtarRep\IMCFxLMS_benchmark_suite.m
+```
+
+复用了其核心设置：`fs=10000 Hz`、`duration=3 s`、次级路径 `[0 0 0.5 0.3]`、IMC-FxLMS 的 `Q` 为 256 taps，并覆盖 fixed、mismatch、chirp、bandlimited 十个场景。
+
+需要特别注意：这个 Akhtar benchmark 的 nominal 频率是 1000 Hz，而该次级路径在 1000 Hz 附近满足
+
+```text
+|S| ≈ 0.7634, Re(S) ≈ 0.0618, phase ≈ -85.4 deg
+```
+
+也就是说，`Re(S)` 很小，几乎落在 Marino-Tomei Case A 的禁区。当前 demo5 的 Marino-Tomei ANC 实现是 Case A：它使用 `sign(Re[S])` 决定自适应方向。因此脚本加入了 `caseARatio = min |Re(S)|/|S|` 检查；当场景频段内该比值低于阈值时，结果标记为 `caseA_not_applicable`，不强行运行到发散。
+
+默认参数下，双方都稳定且可直接比较的场景只有两个：
+
+| Scenario | caseA ratio | IMC-FxLMS steady | Marino-Tomei steady | Marino advantage |
+|:---|---:|---:|---:|---:|
+| Fixed-600Hz | 0.6257 | 26.92 dB | 70.63 dB | +43.71 dB |
+| Fixed-1400Hz | 0.4892 | 27.22 dB | 85.75 dB | +58.53 dB |
+
+这些结果说明：当扰动是单一固定窄带，且目标频率处 Case A 条件可靠时，Marino-Tomei 低阶内模可以显著超过这套固定参数的 IMC-FxLMS baseline。
+
+但这不是“相对于最优 IMC-FxLMS”的结论。Akhtar benchmark 中 IMC-FxLMS 的 `mu=0.01` 是固定 baseline 参数；如果对 `mu`、滤波器长度或归一化策略做网格搜索，IMC-FxLMS 的结果可能改变。因此这次比较的可靠表述应为：Marino-Tomei Case A 在部分固定窄带场景中优于当前固定参数 baseline，而不是必然优于所有调参后的 IMC-FxLMS。
+
+但在 Akhtar benchmark 的 nominal 1 kHz 与 mismatch 场景中，当前 Case A 实现不能声称有优势，因为 `caseARatio` 太低：
+
+| Scenario | caseA ratio | Marino status |
+|:---|---:|:---|
+| Fixed-1000Hz | 0.0810 | `caseA_not_applicable` |
+| Mismatch-plus-1pct | 0.0662 | `caseA_not_applicable` |
+| Mismatch-plus-3pct | 0.0365 | `caseA_not_applicable` |
+| Mismatch-minus-3pct | 0.0810 | `caseA_not_applicable` |
+
+因此，对这组 benchmark 的结论应写成：
+
+- Marino-Tomei Case A 在 Case A 条件可靠的固定窄带场景中有明显优势。
+- Marino-Tomei Case A 不能覆盖 Akhtar nominal 1 kHz，因为该点接近 `Re(S)=0`，需要实现论文 Case B 或更一般的相位补偿结构后才能公平比较。
+- 对 chirp 和 bandlimited 场景，当前单振荡器 Marino-Tomei 不适合作为通用 baseline；这类场景更接近 IMC-FxLMS 的适用范围，除非增加多内模、频率跟踪或预处理机制。
