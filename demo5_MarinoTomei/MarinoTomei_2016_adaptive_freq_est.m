@@ -1,4 +1,4 @@
-function MarinoTomei_2016adaptive_freq_estimator()
+function MarinoTomei_2016_adaptive_freq_est()
 %% Marino & Tomei (2016) — 自适应频率估计与扰动抵消
 % 基于 Marino, Tomei. "Adaptive disturbance rejection for unknown stable
 % linear systems", Transactions of the Institute of Measurement and Control,
@@ -12,7 +12,7 @@ function MarinoTomei_2016adaptive_freq_estimator()
 %   mode = 'plant'     : 估计器 + 二阶被控对象闭环 (默认, 完整仿真)
 %   mode = 'estimator' : 纯估计器, 直接估计扰动信号
 
-clear; close all; clc;
+close all; clc;
 
 %% ====== 用户设置 ======
 run_mode = 'plant';        % 'plant' | 'estimator'

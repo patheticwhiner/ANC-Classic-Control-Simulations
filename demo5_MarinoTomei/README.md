@@ -31,10 +31,10 @@ demo5_MarinoTomei/
 ├── Review_demo5_Publishability.md         ← 学术发表可行性评估
 ├── SIMULATION_REPORT.md                   ← ★ 仿真总结报告（本文档）
 │
-├── MarinoTomei_ode45.m                    ← ★ 自适应控制器 (ode45)
-├── MarinoTomei_euler.m                    ← 同上 (Euler 定步长)
-├── MarinoTomei_bench_rk4.m                ← 自适应控制器 + 调节器方程基准 (RK4)
-├── MarinoTomei_bench_ode45.m              ← 同上 (ode45)
+├── MarinoTomei_adaptive_regulation.m (integrator='ode45')                    ← ★ 自适应控制器 (ode45)
+├── MarinoTomei_adaptive_regulation.m (integrator='euler')                    ← 同上 (Euler 定步长)
+├── MarinoTomei_regulator_benchmark.m (integrator='rk4')                ← 自适应控制器 + 调节器方程基准 (RK4)
+├── MarinoTomei_regulator_benchmark.m (integrator='ode45')              ← 同上 (ode45)
 │
 ├── MarinoTomei_2016_adaptive_freq_est.m   ← ★ 2016 频率自适应估计 + 扰动抵消
 ├── MarinoTomei_2023_unstable.m            ← 2023 实验：不稳定传函系统
@@ -47,6 +47,7 @@ demo5_MarinoTomei/
 │   └── direct_regulator_solution.m          调节器方程数值求解函数
 │
 └── docs/                                  ← 文档与参考资料
+    ├── MarinoTomei_2016_Derivation.md         ★ 2016 频率自适应估计完整数学推导
     ├── papers/                               ★ 所有 tex 文档 + 配套图片 (media/)
     ├── drawioNotebook/                       系统框图与调节器示意图
     └── simulinkModel/Tomei2023.mlx           Simulink 模型
@@ -54,18 +55,23 @@ demo5_MarinoTomei/
 
 ## 仿真脚本差异对比
 
-### 核心仿真：同一控制器，四种实现
+### 核心仿真：同一控制器，四种实现1
+
+
+
+
+
 
 四个 `MarinoTomei_*.m` 脚本实现的是**同一个自适应输出调节控制器**（Marino & Tomei, 2011），差异仅在于**数值求解方式**和**是否附带调节器方程基准**：
 
 |                                   | ode45 求解器                  | Euler/RK4 求解器            |
 | --------------------------------- | ----------------------------- | --------------------------- |
-| **仅控制器**                | `MarinoTomei_ode45.m`       | `MarinoTomei_euler.m`     |
-| **控制器 + 调节器方程基准** | `MarinoTomei_bench_ode45.m` | `MarinoTomei_bench_rk4.m` |
+| **仅控制器**                | `MarinoTomei_adaptive_regulation.m (integrator='ode45')`       | `MarinoTomei_adaptive_regulation.m (integrator='euler')`     |
+| **控制器 + 调节器方程基准** | `MarinoTomei_regulator_benchmark.m (integrator='ode45')` | `MarinoTomei_regulator_benchmark.m (integrator='rk4')` |
 
 **行对行对比：**
 
-| 维度                 | `MarinoTomei_ode45`                                                  | `MarinoTomei_euler`      | `MarinoTomei_bench_rk4`                            | `MarinoTomei_bench_ode45` |
+| 维度                 | `MarinoTomei_adaptive_regulation` (ode45)                                                  | `MarinoTomei_adaptive_regulation` (euler)      | `MarinoTomei_regulator_benchmark` (rk4)                            | `MarinoTomei_regulator_benchmark` (ode45) |
 | -------------------- | ---------------------------------------------------------------------- | -------------------------- | ---------------------------------------------------- | --------------------------- |
 | **控制律**     | $u = -ke - \hat{\chi}_1 - \mu_1\hat{\theta}_1 - \mu_2\hat{\theta}_2$ | ← 完全相同                | ← 完全相同                                          | ← 完全相同                 |
 | **状态滤波器** | 赫尔维茨$D_{4\times4}$ + $\xi_1, \xi_2$                            | ← 完全相同                | ← 完全相同                                          | ← 完全相同                 |
@@ -77,7 +83,7 @@ demo5_MarinoTomei/
 | **运行速度**   | 快 (~2s)                                                               | 最快 (~1s)                 | 中等 (~5s，含调节器方程求解)                         | 慢 (~10s)                   |
 | **适用场景**   | 日常验证                                                               | 单步调试、教学演示         | 需要与理论最优解对标                                 | 高精度对标                  |
 
-> **选择指南**：快速验证用 `MarinoTomei_ode45`；需要理解每步计算用 `MarinoTomei_euler`（可在循环中设断点）；需要回答"控制器离理论最优还有多远"用 `MarinoTomei_bench_*` 系列。
+> **选择指南**：快速验证用 `MarinoTomei_adaptive_regulation` (ode45)；需要理解每步计算用 `MarinoTomei_adaptive_regulation` (euler)（可在循环中设断点）；需要回答"控制器离理论最优还有多远"用 `MarinoTomei_regulator_benchmark` 系列。
 
 ### 其他仿真
 
@@ -91,8 +97,8 @@ demo5_MarinoTomei/
 
 | 脚本                            | 用途                                  | 与主仿真的关系                                                           |
 | ------------------------------- | ------------------------------------- | ------------------------------------------------------------------------ |
-| `demo_simple_adaptive.m`      | 最简实现（不同 D 矩阵 + 硬边界投影）  | `MarinoTomei_ode45.m` 的**教学简化版**，去掉了参考控制器 $R_c$ |
-| `demo_regulator_solution.m`   | 调节器方程求解 + 三区间理论轨迹可视化 | `MarinoTomei_bench_*.m` 中调节器方程求解的**独立验证版**         |
+| `demo_simple_adaptive.m`      | 最简实现（不同 D 矩阵 + 硬边界投影）  | `MarinoTomei_adaptive_regulation.m (integrator='ode45')` 的**教学简化版**，去掉了参考控制器 $R_c$ |
+| `demo_regulator_solution.m`   | 调节器方程求解 + 三区间理论轨迹可视化 | `MarinoTomei_regulator_benchmark.m` 中调节器方程求解的**独立验证版**         |
 | `demo_ss_disturbance.m`       | 验证扰动状态空间模型与解析表达式一致  | 确保所有仿真中$w_1(t), w_2(t)$ 的生成是正确的                          |
 | `direct_regulator_solution.m` | 调节器方程数值求解的独立函数          | 被`demo_regulator_solution.m` 调用                                     |
 
@@ -116,12 +122,13 @@ demo5_MarinoTomei/
 
 ## 阅读路径
 
-1. **📖 [About_MarinoTomei.md](About_MarinoTomei.md)** — 理论推导（系统模型 → 状态滤波器 → 投影算子 → Lyapunov 稳定性）
-2. **🔬 [demos/demo_simple_adaptive.m](demos/demo_simple_adaptive.m)** — 最简实现，快速理解控制律结构
-3. **🔬 [demos/demo_ss_disturbance.m](demos/demo_ss_disturbance.m)** — 理解扰动如何建模为状态空间
-4. **★ [MarinoTomei_ode45.m](MarinoTomei_ode45.m)** — 完整自适应控制器（推荐首选）
-5. **📊 [MarinoTomei_bench_rk4.m](MarinoTomei_bench_rk4.m)** — 实际轨迹 vs 理论最优轨迹对比
-6. **📝 [Review_demo5_Publishability.md](Review_demo5_Publishability.md)** — 学术发表可行性评估
+1. **📖 [About_MarinoTomei.md](About_MarinoTomei.md)** — 2011 理论推导（系统模型 → 状态滤波器 → 投影算子 → Lyapunov 稳定性）
+2. **📖 [docs/MarinoTomei_2016_Derivation.md](docs/MarinoTomei_2016_Derivation.md)** — 2016 理论推导（未知频率多正弦干扰的自适应输出反馈补偿，含平均化分析）
+3. **🔬 [demos/demo_simple_adaptive.m](demos/demo_simple_adaptive.m)** — 最简实现，快速理解控制律结构
+4. **🔬 [demos/demo_ss_disturbance.m](demos/demo_ss_disturbance.m)** — 理解扰动如何建模为状态空间
+5. **★ [MarinoTomei_adaptive_regulation.m (integrator='ode45')](MarinoTomei_adaptive_regulation.m (integrator='ode45'))** — 完整自适应控制器（推荐首选）
+6. **📊 [MarinoTomei_regulator_benchmark.m (integrator='rk4')](MarinoTomei_regulator_benchmark.m (integrator='rk4'))** — 实际轨迹 vs 理论最优轨迹对比
+7. **📝 [Review_demo5_Publishability.md](Review_demo5_Publishability.md)** — 学术发表可行性评估
 
 ## 快速开始
 
@@ -129,13 +136,13 @@ demo5_MarinoTomei/
 % 在 demo5_MarinoTomei/ 目录下运行:
 
 % 完整自适应控制器（推荐首选）
-MarinoTomei_ode45
+MarinoTomei_adaptive_regulation
 
 % 单步调试版（可在循环内设断点）
-MarinoTomei_euler
+MarinoTomei_adaptive_regulation
 
 % 理论最优基准对比
-MarinoTomei_bench_rk4
+MarinoTomei_regulator_benchmark
 
 % 不稳定系统实验
 MarinoTomei_2023_unstable

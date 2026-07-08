@@ -6,13 +6,13 @@
 
 | 仿真脚本 | 引用的理论章节 |
 |:---|:---|
-| `MarinoTomei_ode45.m` | §系统模型, §状态滤波器, §参数估计器, §控制律, §投影算子 |
-| `MarinoTomei_euler.m` | 同上（Euler 定步长实现） |
-| `MarinoTomei_bench_rk4.m` | 同上 + §调节器方程 |
-| `MarinoTomei_bench_ode45.m` | 同上（ode45 实现） |
+| `MarinoTomei_adaptive_regulation.m (integrator='ode45')` | §系统模型, §状态滤波器, §参数估计器, §控制律, §投影算子 |
+| `MarinoTomei_adaptive_regulation.m (integrator='euler')` | 同上（Euler 定步长实现） |
+| `MarinoTomei_regulator_benchmark.m (integrator='rk4')` | 同上 + §调节器方程 |
+| `MarinoTomei_regulator_benchmark.m (integrator='ode45')` | 同上（ode45 实现） |
 | `demos/demo_simple_adaptive.m` | §系统模型, §控制律（简化 D 矩阵 + 硬边界投影） |
 | `MarinoTomei_2023_unstable.m` | 独立理论框架（不稳定传函 + 极点配置自适应） |
-| `MarinoTomei_2016_adaptive_freq_est.m` | 独立理论框架（频率自适应估计） |
+| `MarinoTomei_2016_adaptive_freq_est.m` | 独立理论框架（频率自适应估计），完整推导见 [docs/MarinoTomei_2016_Derivation.md](docs/MarinoTomei_2016_Derivation.md) |
 
 ## 系统模型
 
