@@ -2,7 +2,7 @@
 
 > **论文出处**: Marino, R. & Tomei, P. (2016). "Adaptive disturbance rejection for unknown stable linear systems." *Transactions of the Institute of Measurement and Control*, 38(6): 640–647.
 >
-> **本文档定位**: 应试级完整推导，覆盖问题制定→补偿器设计→稳定性求解→结论的全过程。
+> **本文档定位**: 按论文主线整理的推导笔记，覆盖问题制定→补偿器设计→稳定性求解→结论的全过程。部分平均化步骤保留为论文式推导草图，便于对照原文而非替代原文证明。
 > 对应仿真脚本: `MarinoTomei_2016_adaptive_freq_est.m`
 
 ---
@@ -19,6 +19,7 @@ $$y(s) = P(s) [u(s) + d(s)] \tag{1}$$
 - $y, u, d \in \mathbb{R}$ 分别是输出、输入和干扰
 - **假设 1 (稳定性)**：$P(s)$ 是适当的 (proper) 且稳定的（所有极点均在左半平面）
 - **假设 2 (符号已知)**：静态增益 $P(0)$ 的符号已知；在干扰频率处，$\text{Re}[P(j\omega_i)] \neq 0$ 时其符号已知（Case A），或 $\text{Re}[P(j\omega_i)] = 0$ 时 $\text{Im}[P(j\omega_i)]$ 的符号已知（Case B）
+- **备注**：论文结论是局部结果；证明依赖于足够小的 $k$ 与 $\varepsilon$，以及足够小的初始估计误差。
 
 ### 2. 干扰模型（外系统 Exosystem）
 
@@ -66,7 +67,7 @@ $$\dot{\hat{\theta}}_i = \varepsilon \cdot \text{sign}\{\text{Re}[P(j\omega_i)]\
 
 $$\begin{aligned} \text{sign}[P(0)] &= \text{sign}[1] = +1 \\ \text{sign}\{\text{Re}[P(j0.5)]\} &= \text{sign}[+0.48] = +1 \\ \text{sign}\{\text{Re}[P(j2.0)]\} &= \text{sign}[-0.12] = -1 \end{aligned}$$
 
-代码中的交替符号（`dw1 = w2 + k*y`, `dw3 = w4 - k*y`, `dtheta1 = +ε*w2*y`, `dtheta2 = -ε*w4*y`）恰好是 sign 函数的实例化结果。
+代码中的交替符号（`dw1 = w2 + k*y`, `dw3 = w4 - k*y`, `dtheta1 = +ε*w2*y`, `dtheta2 = -ε*w4*y`）恰好是 sign 函数的实例化结果。需要注意的是，这只是对论文连续时间律的离散实现，不等于论文中平均化证明的直接数值复现。
 
 ---
 
@@ -110,7 +111,7 @@ $$y(s) = P(s) \left[-\frac{k \cdot s_0}{s} - \sum_{i=1}^q \frac{k \cdot s_{\omeg
 
 ### 3. 平均化理论 (Averaging Theory) 处理
 
-当自适应增益 $\varepsilon$ 足够小 ($0 < \varepsilon \ll 1$) 时，$\hat{\theta}$ 的演化速度远慢于状态变量。这是**双时间尺度**系统：状态以 $O(1)$ 时间常数演化，而参数以 $O(1/\varepsilon)$ 时间常数演化。
+当自适应增益 $\varepsilon$ 足够小 ($0 < \varepsilon \ll 1$) 时，$\hat{\theta}$ 的演化速度远慢于状态变量。这是**双时间尺度**系统：状态以 $O(1)$ 时间常数演化，而参数以 $O(1/\varepsilon)$ 时间常数演化。论文的证明路线是先固定参数、分析快速子系统的稳态响应，再对慢变量做平均化处理，而不是直接对原系统做全局李雅普诺夫分析。
 
 考虑"冻结"参数 $\hat{\theta}$ 下的稳态响应。设 $y_{ss}(t)$ 和 $\hat{w}_{2i,ss}(t)$ 为固定 $\hat{\theta}$ 时系统 (5) 的稳态解。自适应律 (6) 的平均系统为：
 
@@ -154,7 +155,7 @@ $$\dot{\tilde{\theta}}_{av,i} = -\varepsilon \kappa_i \tilde{\theta}_{av,i} \tag
 
 这是一阶线性衰减动力学，解为 $\tilde{\theta}_{av,i}(t) = \tilde{\theta}_{av,i}(0) \cdot e^{-\varepsilon \kappa_i t}$。
 
-由平均化理论的**一阶近似定理**（Khalil, 2002, Theorem 10.4）：对足够小的 $\varepsilon$，实际误差 $\tilde{\theta}_i(t)$ 与平均系统解 $\tilde{\theta}_{av,i}(t)$ 之差在有限时间区间上为 $O(\varepsilon)$。结合 (20) 的指数稳定性，存在 $\varepsilon^* > 0$ 使得对所有 $\varepsilon \in (0, \varepsilon^*)$，$\tilde{\theta}_i(t) \to 0$ 指数收敛。
+由平均化理论的一阶近似定理（Khalil, 2002, Theorem 10.4）：对足够小的 $\varepsilon$，实际误差 $\tilde{\theta}_i(t)$ 与平均系统解 $\tilde{\theta}_{av,i}(t)$ 之差在有限时间区间上为 $O(\varepsilon)$。结合 (20) 的指数稳定性，论文得到的是局部指数收敛结论：存在 $\varepsilon^* > 0$ 使得在初值足够接近平衡点时，$\tilde{\theta}_i(t) \to 0$ 指数收敛。
 
 ---
 
@@ -170,13 +171,13 @@ $$\lim_{t \to \infty} \hat{\theta}_i(t) = \omega_i^2, \quad i = 1, 2, \ldots, q 
 
 ### 2. 输出收敛
 
-当频率估计准确 ($\hat{\theta}_i \to \omega_i^2$) 时，补偿器变为精确内模。由于系统 $P(s)$ 稳定，且闭环矩阵在平衡点 $\tilde{\theta} = 0$ 处是 Hurwitz 的——其特征值为 $P(s)$ 的极点（左半平面）加上 $s = 0, \pm j\omega_1, \ldots, \pm j\omega_q$（虚轴上的一对内模极点）——根据内模原理，闭环系统满足**输出调节**性质：
+当频率估计准确 ($\hat{\theta}_i \to \omega_i^2$) 时，补偿器变为精确内模。论文的结论不是“闭环矩阵在平衡点处 Hurwitz”，而是：在足够小的 $k$ 与 $\varepsilon$ 下，误差系统局部指数稳定，从而 $y(t)$ 与 $u(t)+d(t)$ 指数收敛到零。内模极点本身位于虚轴上，不应与 Hurwitz 性同时陈述。
 
 $$\lim_{t \to \infty} y(t) = 0 \tag{22}$$
 
 ### 3. 总体结论
 
-存在足够小的 $k > 0$ 和 $\varepsilon > 0$，使得闭环系统 (1)-(5)-(6) 在平衡点
+存在足够小的 $k > 0$ 和 $\varepsilon > 0$，并要求初始估计误差足够小，使得闭环系统 (1)-(6) 在平衡点
 
 $$\{\hat{w} = w, \hat{\theta}_i = \omega_i^2, y = 0\}$$
 
@@ -195,6 +196,7 @@ $$\{\hat{w} = w, \hat{\theta}_i = \omega_i^2, y = 0\}$$
 | **正交性积分** | 平均化计算中 $\int \sin(\omega_i t)\cos(\omega_i t) = 0$ 和 $\int \sin^2 = 1/2$ 是关键技巧 |
 | **持续性激励** | $A_i > 0$ 保证扰动持续存在，为参数收敛提供必要条件 |
 | **Case A vs Case B** | 本文仅推导 Case A ($\text{Re}[P(j\omega_i)] \neq 0$)；当实部为零时需切换至 Im 符号和正交补偿器结构 |
+| **局部性** | 论文结论要求足够小的初始误差与足够小的自适应增益；不是全局收敛结论 |
 
 ---
 
