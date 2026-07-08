@@ -55,7 +55,7 @@ for mlx in $STAGED_MLX; do
     # 从 [Content_Types].xml 中移除 output.xml 的声明
     CT_FILE="$TMPDIR/[Content_Types].xml"
     if [ -f "$CT_FILE" ]; then
-        grep -v '/matlab/output\.xml' "$CT_FILE" > "$CT_FILE.tmp"
+        grep -v '/matlab/output\.xml' "$CT_FILE" > "$CT_FILE.tmp" || true
         mv "$CT_FILE.tmp" "$CT_FILE"
     fi
 

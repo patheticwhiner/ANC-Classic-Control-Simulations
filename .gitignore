@@ -1,7 +1,28 @@
-.slx
-.slxc
+*.slx
+*.slxc
 slprj/
 *.mat
 *.asv
 *.m~
 output/
+
+# LaTeX build artifacts
+*.aux
+*.log
+*.out
+*.synctex.gz
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.toc
+*.bbl
+
+# PDF (built from .tex)
+*.pdf
+
+# Draw.io auto-backup
+.$*.bkp
+
+# Office temp files
+~$*

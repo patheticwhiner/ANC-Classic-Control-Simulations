@@ -1,0 +1,125 @@
+\documentclass{article}
+\usepackage{amsmath, amssymb}
+\usepackage{graphicx}
+\usepackage{hyperref}
+
+\title{Marino2011自适应控制器的数学方程}
+\author{MATLAB\_ANC项目组}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{系统模型}
+
+考虑以下二阶非线性系统：
+\begin{align}
+\dot{x}_1 &= x_2 + a_1 x_1 + \frac{1}{\beta}u + w_1(t) \\
+\dot{x}_2 &= \frac{1}{\beta}b_2 u \\
+y &= x_1
+\end{align}
+
+其中 $a_1$, $b_2$ 和 $\beta$ 是未知参数，$w_1(t)$ 是外部扰动，表示为：
+\begin{equation}
+w_1(t) = 
+\begin{cases}
+\sin(\omega_1 t) + 0.2\sin(\omega_3 t), & t < 50 \\
+\sin(\omega_1 t), & t \geq 50
+\end{cases}
+\end{equation}
+
+\section{控制问题}
+
+目标是使系统输出 $y$ 跟踪参考信号 $y_r = -w_2(t)$，其中：
+\begin{equation}
+w_2(t) = 
+\begin{cases}
+\sin(\omega_2 t), & t < 100 \\
+0, & t \geq 100
+\end{cases}
+\end{equation}
+
+\section{状态滤波器}
+
+设计两个状态滤波器：
+\begin{align}
+\dot{\xi}_1 &= D\xi_1 + 
+\begin{bmatrix} 
+0 \\ u \\ 0 \\ 0
+\end{bmatrix} \\
+\dot{\xi}_2 &= D\xi_2 + 
+\begin{bmatrix} 
+0 \\ 0 \\ 0 \\ u
+\end{bmatrix}
+\end{align}
+
+其中$D$是赫尔维茨矩阵：
+\begin{equation}
+D = 
+\begin{bmatrix}
+-1 & 1 & 0 & 0 \\
+0 & -d_2 & 1 & 0 \\
+0 & 0 & -d_3 & 1 \\
+0 & 0 & 0 & -d_4
+\end{bmatrix}
+\end{equation}
+
+\section{估计器设计}
+
+估计器动态方程：
+\begin{equation}
+\dot{\hat{\chi}} = D\hat{\chi} - 
+\begin{bmatrix} 
+d_2 \\ d_3 \\ d_4 \\ d_5
+\end{bmatrix} u
+\end{equation}
+
+\section{参数更新律}
+
+对于参数估计：
+\begin{align}
+\dot{\hat{\theta}}_1 &= g \cdot \text{proj}(\mu_1 \cdot e, \hat{\theta}_1, 0, 2) \\
+\dot{\hat{\theta}}_2 &= g \cdot \text{proj}(\mu_2 \cdot e, \hat{\theta}_2, 0, 2)
+\end{align}
+
+其中投影算子定义为：
+\begin{equation}
+\text{proj}(\nu, \hat{\theta}, \text{low}, \text{high}) = 
+\begin{cases}
+0, & \text{if } \hat{\theta} \leq \text{low } \text{ and } \nu < 0 \\
+0, & \text{if } \hat{\theta} \geq \text{high } \text{ and } \nu > 0 \\
+\nu, & \text{otherwise}
+\end{cases}
+\end{equation}
+
+\section{控制律}
+
+自适应控制律：
+\begin{equation}
+u = -ke - \hat{\chi}_1 - \mu_1\hat{\theta}_1 - \mu_2\hat{\theta}_2
+\end{equation}
+
+其中：
+\begin{align}
+\mu_1 &= \xi_{1,1} \\
+\mu_2 &= \xi_{2,1}
+\end{align}
+
+\section{理论预期值}
+
+根据系统特性，参数估计值收敛到：
+\begin{align}
+\hat{\theta}_1 &\rightarrow \omega_1^2 + \omega_2^2 = 1^2 + 0.5^2 = 1.25 \\
+\hat{\theta}_2 &\rightarrow \omega_1^2 \cdot \omega_2^2 = 1^2 \cdot 0.5^2 = 0.25
+\end{align}
+
+\section{误差定义}
+
+仿真中使用两种误差衡量控制性能：
+\begin{align}
+e_{output} &= y - y_r = x_1 - (-w_2) \\
+e_{input} &= u - (-ke_{output})
+\end{align}
+
+\end{document}
