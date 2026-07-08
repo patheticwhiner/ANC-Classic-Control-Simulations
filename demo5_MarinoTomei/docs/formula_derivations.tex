@@ -1,0 +1,483 @@
+\documentclass[12pt,a4paper]{article}
+
+% --- 页面布局 ---
+\usepackage{geometry}
+\geometry{left=2.5cm, right=2.5cm, top=2.5cm, bottom=2.5cm}
+
+% --- 中文支持 ---
+\usepackage{xeCJK}
+\setCJKmainfont{Noto Serif CJK SC}[BoldFont=Noto Sans CJK SC]
+\setCJKsansfont{Noto Sans CJK SC}
+\setCJKmonofont{Noto Sans CJK SC}
+
+% --- 数学与符号 ---
+\usepackage{amsmath,amssymb,mathtools}
+\usepackage{enumitem}
+\usepackage{arydshln}
+\setlist[enumerate]{itemsep=0pt,parsep=0pt}
+
+% --- 段落 ---
+\usepackage{indentfirst}
+\setlength{\parindent}{2em}
+\setlength{\parskip}{4pt plus 2pt minus 1pt}
+
+% --- 链接 ---
+\usepackage{hyperref}
+\hypersetup{hidelinks}
+
+\title{Marino \& Tomei 自适应控制器：方程汇总与滤波变换推导}
+\author{MATLAB\_ANC 项目组}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+% ======================================================================
+\part{Marino 2011 自适应控制器方程}
+% ======================================================================
+
+\section{系统模型}
+
+考虑以下二阶非线性系统：
+\begin{align}
+\dot{x}_1 &= x_2 + a_1 x_1 + \frac{1}{\beta}u + w_1(t) \label{eq:sys1} \\
+\dot{x}_2 &= \frac{1}{\beta}b_2 u \label{eq:sys2} \\
+y &= x_1 \label{eq:sys3}
+\end{align}
+
+其中 $a_1$, $b_2$ 和 $\beta$ 是未知参数，$w_1(t)$ 是外部扰动，表示为：
+\begin{equation}
+w_1(t) =
+\begin{cases}
+\sin(\omega_1 t) + 0.2\sin(\omega_3 t), & t < 50 \\
+\sin(\omega_1 t), & t \geq 50
+\end{cases}
+\label{eq:w1}
+\end{equation}
+
+\section{控制问题}
+
+目标是使系统输出 $y$ 跟踪参考信号 $y_r = -w_2(t)$，其中：
+\begin{equation}
+w_2(t) =
+\begin{cases}
+\sin(\omega_2 t), & t < 100 \\
+0, & t \geq 100
+\end{cases}
+\label{eq:w2}
+\end{equation}
+
+定义输出调节误差：
+\begin{equation}
+e = y - y_r = x_1 - (-w_2) = x_1 + w_2
+\label{eq:error}
+\end{equation}
+
+\section{状态滤波器}
+
+设计两个状态滤波器 $\xi_1, \xi_2 \in \mathbb{R}^4$：
+\begin{align}
+\dot{\xi}_1 &= D\xi_1 +
+\begin{bmatrix}
+0 \\ u \\ 0 \\ 0
+\end{bmatrix} \label{eq:xi1} \\
+\dot{\xi}_2 &= D\xi_2 +
+\begin{bmatrix}
+0 \\ 0 \\ 0 \\ u
+\end{bmatrix} \label{eq:xi2}
+\end{align}
+
+其中 $D \in \mathbb{R}^{4\times4}$ 是赫尔维茨矩阵：
+\begin{equation}
+D =
+\begin{bmatrix}
+-1 & 1 & 0 & 0 \\
+0 & -d_2 & 1 & 0 \\
+0 & 0 & -d_3 & 1 \\
+0 & 0 & 0 & -d_4
+\end{bmatrix}
+\label{eq:D}
+\end{equation}
+
+滤波输出（回归量）定义：
+\begin{align}
+\mu_1 &= \xi_{1,1} \label{eq:mu1} \\
+\mu_2 &= \xi_{2,1} \label{eq:mu2}
+\end{align}
+
+\section{估计器设计}
+
+估计器动态方程（$\hat{\chi} \in \mathbb{R}^4$）：
+\begin{equation}
+\dot{\hat{\chi}} = D\hat{\chi} -
+\begin{bmatrix}
+d_2 \\ d_3 \\ d_4 \\ d_5
+\end{bmatrix} u
+\label{eq:chi}
+\end{equation}
+
+$\hat{\chi}_1$ 直接用于控制律。
+
+\section{参数更新律}
+
+频率参数 $\hat{\theta}_1, \hat{\theta}_2$ 的自适应更新：
+\begin{align}
+\dot{\hat{\theta}}_1 &= g \cdot \operatorname{proj}(\mu_1 \cdot e,\; \hat{\theta}_1,\; 0,\; 2) \label{eq:theta1} \\
+\dot{\hat{\theta}}_2 &= g \cdot \operatorname{proj}(\mu_2 \cdot e,\; \hat{\theta}_2,\; 0,\; 2) \label{eq:theta2}
+\end{align}
+
+其中投影算子定义为：
+\begin{equation}
+\operatorname{proj}(\nu, \hat{\theta}, \text{low}, \text{high}) =
+\begin{cases}
+0, & \hat{\theta} \leq \text{low} \;\land\; \nu < 0 \\
+0, & \hat{\theta} \geq \text{high} \;\land\; \nu > 0 \\
+\nu, & \text{otherwise}
+\end{cases}
+\label{eq:proj}
+\end{equation}
+
+\section{控制律}
+
+自适应控制律：
+\begin{equation}
+u = -k e - \hat{\chi}_1 - \mu_1\hat{\theta}_1 - \mu_2\hat{\theta}_2
+\label{eq:control}
+\end{equation}
+
+\section{理论预期值}
+
+根据外系统结构，参数估计预期收敛到：
+\begin{align}
+\hat{\theta}_1 &\to \omega_1^2 + \omega_2^2 = 1^2 + 0.5^2 = 1.25 \label{eq:conv1} \\
+\hat{\theta}_2 &\to \omega_1^2 \cdot \omega_2^2 = 1^2 \cdot 0.5^2 = 0.25 \label{eq:conv2}
+\end{align}
+
+\section{误差定义}
+
+仿真中使用两种误差衡量控制性能：
+\begin{align}
+e_{\text{output}} &= y - y_r = x_1 - (-w_2) \label{eq:eout} \\
+e_{\text{input}} &= u - (-k \cdot e_{\text{output}}) \label{eq:ein}
+\end{align}
+
+\newpage
+% ======================================================================
+\part{滤波变换与坐标推导（修订版）}
+% ======================================================================
+
+本部分源自 \texttt{eq2.tex}，给出了 Marino \& Tomei (2013) 中滤波变换（filtered transformation）的完整推导。原 \texttt{eq.tex} 的旧版推导已被此修订版取代。
+
+\section{基本符号假设}
+
+已知原系统：
+\begin{align*}
+\dot{x} &=
+\begin{bmatrix}
+A_0 & -b_0c_c \\
+0 & R_{CE}(\theta)
+\end{bmatrix} x +
+\begin{bmatrix}
+b_0 \\ 0
+\end{bmatrix} (u-\varepsilon) \\
+&= A_c x +
+\left(
+\left[
+\begin{array}{c|c}
+-a_0e_1^\top & -b_0e_1^\top \\ \hline
+0 & -\theta_0e_1^\top
+\end{array}
+\right]
+- e_v e_{v+1}^\top
+\right) x +
+\begin{bmatrix}
+b_0 \\ 0
+\end{bmatrix} (u-\varepsilon)
+\end{align*}
+
+其中参数向量定义为：
+\begin{align*}
+a_0 &= \begin{bmatrix} a_{v-1} & a_{v-2} & \cdots & a_0 \end{bmatrix}^\top \\
+b_0 &= \begin{bmatrix} b_{v-1} & b_{v-2} & \cdots & b_0 \end{bmatrix}^\top \\
+\theta_0 &= \begin{bmatrix} 0 & \theta_1 & 0 & \theta_2 & \cdots & \theta_m & 0 \end{bmatrix}^\top
+\end{align*}
+
+\section{坐标变换}
+
+坐标变换规定为 $\zeta = T_2(\theta) x$，其中：
+\begin{align*}
+T_2(\theta) &=
+\begin{bmatrix}
+I_v & 0 \\
+0 & 0
+\end{bmatrix} +
+\left[
+\begin{array}{c|c}
+\Theta & B
+\end{array}
+\right] \\
+&= \begin{bmatrix}
+I_v & 0 \\
+0 & 0
+\end{bmatrix}
++ \sum_{k=1}^{v} Z^k \theta_0 e_t^\top
+- \sum_{\ell=1}^{2m+1} Z^{\ell} b_0 e_{v+\ell}^\top
+\end{align*}
+
+变换矩阵 $T_2$ 的结构：
+{\small
+\begin{align*}
+T_2 =
+\left[
+\begin{array}{ccccc|ccccc}
+1 & 0 & 0 & \cdots & 0 & 0 & 0 & 0 & \cdots & 0 \\
+\theta_0 & 1 & 0 & \ddots & 0 & -b_0 & 0 & 0 & \ddots & 0 \\
+ & \theta_0 & 1 & \ddots & 0 &  & -b_0 & 0 & \ddots & 0 \\
+ &  & \theta_0 & \ddots & \vdots &  &  & -b_0 & \ddots & \vdots \\
+ &  &  & \ddots & 1 &  &  &  & \ddots & 0 \\
+ &  &  &  & \theta_0 &  &  &  &  & -b_0
+\end{array}
+\right]
+\end{align*}}
+
+其中移位矩阵 $Z$ 和变换系数：
+\begin{align*}
+Z &= \begin{bmatrix}
+0 & 0 & \cdots & 0 \\
+1 & 0 & \cdots & 0 \\
+0 & 1 & \ddots & 0 \\
+\vdots & \vdots & \ddots & \vdots \\
+0 & 0 & \cdots & 1 \\
+\vdots & \vdots &  & \vdots \\
+0 & 0 & \cdots & 0
+\end{bmatrix} &
+a[0] &= Z^0 a_0 & a[1] &= Z^2 a_0 + e_2 & a[m] &= Z^{2m} a_0 + e_{2m} \\
+&& b[0] &= Z^0 b_0 & b[1] &= Z^2 b_0 & b[m] &= Z^{2m} b_0
+\end{align*}
+
+\textbf{注：} 矩阵 $T$ 中参数 $\theta$ 分布在矩阵下三角，参数 $b$ 完全分布在矩阵上三角。
+
+\section{推导步骤}
+
+首先对原系统进行坐标变换：
+\begin{align*}
+T_2\dot{x} &= T_2 A_c x +
+T_2 \left(
+\left[
+\begin{array}{c|c}
+-a_0e_1^\top & -b_0e_1^\top \\ \hline
+0 & -\theta_0e_1^\top
+\end{array}
+\right]
+- e_v e_{v+1}^\top
+\right) x +
+T_2 \begin{bmatrix} b_0 \\ 0 \end{bmatrix} (u-\varepsilon)
+\end{align*}
+
+\subsection{步骤 1：替换坐标向量 $\zeta$}
+
+\begin{align*}
+\dot{\zeta} &= A_c \zeta + (T_2A_c - A_cT_2)x \\
+&\quad + T_2 \left(
+\left[
+\begin{array}{c|c}
+-a_0e_1^\top & -b_0e_1^\top \\ \hline
+0 & -\theta_0e_1^\top
+\end{array}
+\right] x
+- e_v e_{v+1}^\top x +
+\begin{bmatrix} b_0 \\ 0 \end{bmatrix} (u-\varepsilon)
+\right) \\
+&= A_c \zeta +
+\bigl[-\theta_0 e_1^\top + (Z^v\theta_0 + e_v + b_0)e_{v+1}^\top\bigr] x
+- T_2 e_v e_{v+1}^\top x \\
+&\quad + \left(
+\begin{bmatrix} I_v & 0 \\ 0 & 0 \end{bmatrix} +
+\left[\begin{array}{c|c} \Theta & B \end{array}\right]
+\right)
+\left(
+\left[
+\begin{array}{c|c}
+-a_0e_1^\top & -b_0e_1^\top \\ \hline
+0 & -\theta_0e_1^\top
+\end{array}
+\right] x
++ \begin{bmatrix} b_0 \\ 0 \end{bmatrix} (u-\varepsilon)
+\right) \\
+&= A_c \zeta +
+\bigl[-\theta_0 e_1^\top + (Z^v\theta_0 + e_v + b_0)e_{v+1}^\top\bigr] x
+- (Z^v\theta_0 + e_v)e_{v+1}^\top x \\
+&\quad + \bigl(-a[0]e + b[0](u-\varepsilon) - b_0 e_{v+1}^\top x\bigr) \\
+&\quad + \left[\begin{array}{c|c} \Theta & B \end{array}\right]
+\left(
+\left[
+\begin{array}{c|c}
+-a_0e_1^\top & -b_0e_1^\top \\ \hline
+0 & -\theta_0e_1^\top
+\end{array}
+\right] x
++ \begin{bmatrix} b_0 \\ 0 \end{bmatrix} (u-\varepsilon)
+\right) \\
+&= A_c \zeta - \theta_0 e_1^\top x +
+\bigl(-a[0]e + b[0](u-\varepsilon)\bigr) \\
+&\quad + \left[\begin{array}{c|c} \Theta & B \end{array}\right]
+\left(
+\left[
+\begin{array}{c|c}
+-a_0e_1^\top & -b_0e_1^\top \\ \hline
+0 & -\theta_0e_1^\top
+\end{array}
+\right] x
++ \begin{bmatrix} b_0 \\ 0 \end{bmatrix} (u-\varepsilon)
+\right)
+\end{align*}
+
+\subsection{步骤 2：展开等式右侧}
+
+\begin{align*}
+&\left[\begin{array}{c|c} \Theta & B \end{array}\right]
+\left[
+\begin{array}{c|c}
+-a_0e_1^\top & -b_0e_1^\top \\ \hline
+0 & -\theta_0e_1^\top
+\end{array}
+\right] x \\
+&= \left[\begin{array}{c|c} \Theta & 0 \end{array}\right]
+\left[\begin{array}{c|c} -a_0e_1^\top & -b_0e_1^\top \\ \hline 0 & 0 \end{array}\right] x
++ \left[\begin{array}{c|c} 0 & B \end{array}\right]
+\left[\begin{array}{c|c} 0 & 0 \\ \hline 0 & -\theta_0e_1^\top \end{array}\right] x \\
+&= -\sum_{k=1}^{m} \theta_k Z^{2k}
+\begin{bmatrix} I_v \\ 0 \end{bmatrix}
+(a_0e_1^\top + b_0 e_{v+1}^\top)x
++ \left(\sum_{\ell=1}^{2m+1} Z^{\ell} b_0 e_{v+\ell}^\top
+\begin{bmatrix} 0 \\ I_{2m+1} \end{bmatrix}\right)
+\theta_0 e_{v+1}^\top x \\
+&= -\sum_{k=1}^{m} \theta_k
+\bigl(a[k]e_1^\top - e_{2k}e_1^\top + b[k]e_{v+1}^\top\bigr)x
++ \left(\sum_{\ell=1}^{2m+1} Z^{\ell} b_0 e_{\ell}^\top \right)
+\theta_0 e_{v+1}^\top x \\
+&= -\sum_{k=1}^{m} \theta_k a[k]e_1^\top x
++ \sum_{k=1}^{m} \theta_k e_{2k}e_1^\top x
+- \sum_{k=1}^{m} \theta_k b[k]e_{v+1}^\top x
++ \sum_{k=1}^{m} Z^{2k} b_0 \theta_k e_{v+1}^\top x \\
+&= -\sum_{k=1}^{m} \theta_k a[k]e_1^\top x + \theta_0 e_1^\top x
+\end{align*}
+
+控制输入项的展开：
+\begin{align*}
+\left[\begin{array}{c|c} \Theta & B \end{array}\right]
+\begin{bmatrix} b_0 \\ 0 \end{bmatrix} (u-\varepsilon)
+&= \left[\begin{array}{c|c} \Theta & 0 \end{array}\right]
+\begin{bmatrix} b_0 \\ 0 \end{bmatrix} (u-\varepsilon) \\
+&= \sum_{t=1}^{v} Z^{t}\theta_0 e_t^\top
+\begin{bmatrix} I_v \\ 0 \end{bmatrix}
+b_0 (u-\varepsilon)
+= \sum_{\ell=1}^{m} \theta_{\ell} Z^{2\ell}
+\begin{bmatrix} I_v \\ 0 \end{bmatrix}
+b_0 (u-\varepsilon) \\
+&= \sum_{\ell=1}^{m} \theta_{\ell} b[\ell] (u-\varepsilon)
+\end{align*}
+
+\subsection{步骤 3：汇总}
+
+将各项汇总得到观测器标准型：
+\begin{align}
+\dot{\zeta} &= A_c \zeta + \bigl(-a[0]e + b[0](u-\varepsilon)\bigr)
++ \sum_{k=1}^{m} \theta_{k} \bigl(-a[k]e + b[k](u-\varepsilon)\bigr)
+\label{eq:observer_canonical}
+\end{align}
+
+这正是滤波变换的目标形式——未知参数 $\theta_k$ 以线性回归形式出现。
+
+\section{简化推导（主系统变换）}
+
+为便于理解，给出浓缩版的推导流程。
+
+\subsection{主系统变换}
+
+\begin{align*}
+\zeta &= \left(
+\begin{bmatrix} I_v & 0 \\ 0 & 0 \end{bmatrix} +
+\left[\begin{array}{c|c} \Theta & B \end{array}\right]
+\right)
+\begin{bmatrix} \tilde{x}_o \\ \eta \end{bmatrix}
+= \begin{bmatrix} I_v \\ 0 \end{bmatrix} \tilde{x}_o + B\eta + \Theta \tilde{x}_o
+\end{align*}
+
+\begin{align*}
+\begin{bmatrix} \dot{\tilde{x}}_o \\ \dot{\eta} \end{bmatrix}
+&= \begin{bmatrix} A_0 & b_0c_c \\ 0 & R(\theta) \end{bmatrix}
+\begin{bmatrix} \tilde{x}_o \\ \eta \end{bmatrix}
+\end{align*}
+
+\begin{align*}
+\dot{\zeta}
+&= \begin{bmatrix} I_v \\ 0 \end{bmatrix} \dot{\tilde{x}}_o + B\dot{\eta} + \Theta \dot{\tilde{x}}_o \\
+&= \begin{bmatrix} I_v \\ 0 \end{bmatrix}(A_o \tilde{x}_o + b_0 c_c \eta) + B R(\theta) \eta + \Theta \dot{\tilde{x}}_o \\
+&= \begin{bmatrix} I_v \\ 0 \end{bmatrix}A_o \tilde{x}_o
++ \left(\begin{bmatrix} I_v \\ 0 \end{bmatrix}b_0 c_c + B R(\theta) \right)\eta
++ \Theta \dot{\tilde{x}}_o \\
+&= \left(-\begin{bmatrix} I_v \\ 0 \end{bmatrix}a_0 e_1^\top + \begin{bmatrix} I_v \\ 0 \end{bmatrix}A_{cv} \right)\tilde{x}_o \\
+&\quad + \left(\begin{bmatrix} I_v \\ 0 \end{bmatrix}b_0 c_c + B(-\theta_0 e_1^\top + A_{cm}) \right)\eta + \Theta \dot{\tilde{x}}_o \\
+&= \left( -a[0]e_1^\top + \begin{bmatrix} I_v \\ 0 \end{bmatrix}A_{cv} \right)\tilde{x}_o \\
+&\quad + \left(\begin{bmatrix} I_v \\ 0 \end{bmatrix}b_0 c_c + B A_{cm} - B\theta_0 e_1^\top \right)\eta \\
+&\quad + \left( -\Theta a_0 e_1^\top\tilde{x}_o + \Theta A_{cv}\tilde{x}_o + \Theta b_o e_1^\top\eta\right)
+\end{align*}
+
+\subsection{等效向量恒等式}
+
+\begin{align*}
+B\theta_0 e_1^\top \eta
+&= \left(\sum_{t=1}^{2m+1} Z_n^{t} \begin{bmatrix} I_{2m+1} \\ 0 \end{bmatrix} b_0 e_{t}^\top \right)
+\theta_0 e_1^\top \eta \in \mathbb{R}^{n} \\
+&= \left(\sum_{t=1}^{v} b_{v-t}\cdot Z_n^{t} \begin{bmatrix} I_{2m+1} \\ 0 \end{bmatrix} \right)
+\left(\sum_{\ell=1}^{m} \theta_\ell e_{2\ell} \right)e_1^\top \eta \\
+&= \left(\sum_{t=1}^{v} \sum_{\ell=1}^{m}
+b_{v-t}\theta_\ell\cdot Z_n^{t} \begin{bmatrix} I_{2m+1} \\ 0 \end{bmatrix} e_{2\ell} \right) e_1^\top \eta \\
+&= \left(\sum_{t=1}^{v} \sum_{\ell=1}^{m}
+b_{v-t}\theta_\ell\cdot Z_n^{t} e_{2\ell} \right) e_1^\top \eta \\
+&= \left(\sum_{t=1}^{v} \sum_{\ell=1}^{m}
+b_{v-t}\theta_\ell\cdot e_{2\ell+t} \right) e_1^\top \eta
+= \left( \sum_{\ell=1}^{m} \sum_{t=1}^{v}
+b_{v-t}\theta_\ell\cdot e_{2\ell+t} \right) e_1^\top \eta \\
+&= \left( \sum_{\ell=1}^{m} \sum_{t=1}^{v}
+b_{v-t}\theta_\ell\cdot Z_n^{2\ell} e_{t} \right) e_1^\top \eta \\
+&= \left( \sum_{\ell=1}^{m} \theta_\ell Z_n^{2\ell} \sum_{t=1}^{v} b_{v-t} e_{t} \right) e_1^\top \eta \\
+&= \left( \sum_{\ell=1}^{m} \theta_\ell Z_n^{2\ell} \begin{bmatrix} I_v \\ 0 \end{bmatrix} \right)
+\left(\sum_{t=1}^{v} b_{v-t} e_{t} \right) e_1^\top \eta \\
+&= \Theta_0 b_0 e_1^\top \eta
+\end{align*}
+
+\subsection{拓展系统变换（含控制输入）}
+
+\begin{align*}
+\begin{bmatrix} \dot{\tilde{x}}_o \\ \dot{\eta} \end{bmatrix}
+&= \begin{bmatrix} A_0 & b_0c_c \\ 0 & R(\theta) \end{bmatrix}
+\begin{bmatrix} \tilde{x}_o \\ \eta \end{bmatrix} +
+\begin{bmatrix} b_0 \\ 0 \end{bmatrix} (u-\varepsilon)
+\end{align*}
+
+\begin{align*}
+\dot{\zeta}
+&= \begin{bmatrix} I_v \\ 0 \end{bmatrix} \dot{\tilde{x}}_o + B\dot{\eta} + \Theta \dot{\tilde{x}}_o \\
+&= \left(\begin{bmatrix} I_v \\ 0 \end{bmatrix} + \Theta\right)
+\bigl(A_o \tilde{x}_o + b_0 c_c \eta + b_0(u-\epsilon)\bigr) + B R(\theta) \eta \\
+&= A_c\zeta - a[0] e - \sum_{i=1}^m \theta_i a[i]e
++ \left(\begin{bmatrix} I_v \\ 0 \end{bmatrix} + \Theta\right)b_0(u-\epsilon) \\
+&= A_c\zeta - a[0] e - \sum_{i=1}^m \theta_i a[i]e
++ b[0](u-\varepsilon)
++ \left(\sum_{\ell=1}^{m} \sum_{t=1}^{v} b_{v-t}\theta_\ell\cdot e_{2\ell+t} \right) (u-\varepsilon) \\
+&= A_c\zeta - a[0] e - \sum_{i=1}^m \theta_i a[i]e
++ b[0](u-\varepsilon)
++ \left( \sum_{\ell=1}^{m} \theta_\ell Z_n^{2\ell} \sum_{t=1}^{v} b_{v-t} e_{t} \right) (u-\varepsilon) \\
+&= A_c\zeta - a[0] e - \sum_{i=1}^m \theta_i a[i]e
++ b[0](u-\varepsilon)
++ \sum_{i=1}^{m} \theta_i b[i] (u-\varepsilon)
+\end{align*}
+
+最终结果与式~\eqref{eq:observer_canonical} 一致，验证了两种推导路径的等价性。
+
+\end{document}

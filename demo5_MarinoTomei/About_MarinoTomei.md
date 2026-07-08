@@ -1,4 +1,18 @@
-# Marino2011自适应控制器的理论背景
+# About_MarinoTomei — 自适应输出调节：从系统模型到 Lyapunov 稳定性
+
+> **本文档是 `demo5_MarinoTomei` 下所有仿真的公共理论地基。** 各仿真脚本直接引用本文档中的公式编号，不再重复推导。
+
+## 适用仿真
+
+| 仿真脚本 | 引用的理论章节 |
+|:---|:---|
+| `MarinoTomei_ode45.m` | §系统模型, §状态滤波器, §参数估计器, §控制律, §投影算子 |
+| `MarinoTomei_euler.m` | 同上（Euler 定步长实现） |
+| `MarinoTomei_bench_rk4.m` | 同上 + §调节器方程 |
+| `MarinoTomei_bench_ode45.m` | 同上（ode45 实现） |
+| `demos/demo_simple_adaptive.m` | §系统模型, §控制律（简化 D 矩阵 + 硬边界投影） |
+| `MarinoTomei_2023_unstable.m` | 独立理论框架（不稳定传函 + 极点配置自适应） |
+| `MarinoTomei_2016_adaptive_freq_est.m` | 独立理论框架（频率自适应估计） |
 
 ## 系统模型
 

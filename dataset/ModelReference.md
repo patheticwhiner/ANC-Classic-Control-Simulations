@@ -293,6 +293,66 @@ d = model.d_delay;  Ts = model.Ts;
 
 ---
 
+## 8. syn_Ho2020_ALE — Ho 2020 窄带 ALE 前馈 ANC
+
+### 来源
+
+Ho, C. Y., Shyu, K. K., Chang, C. Y., & Kuo, S. M. (2020). Efficient Narrowband Noise Cancellation System Using Adaptive Line Enhancer. *IEEE/ACM Transactions on Audio, Speech, and Language Processing*, 28.
+
+### 数学模型
+
+**主通路** (primary path, 扰动从噪声源传播到误差传声器):
+
+$$P(z) = z^{-5} - 0.3z^{-6} + 0.2z^{-7}$$
+
+**次级通路** (secondary path, 抗噪声从次级扬声器到误差传声器):
+
+$$S(z) = z^{-2} + 1.5z^{-3} - z^{-4}$$
+
+| 属性 | 值 |
+|:---|---|
+| 域 | 离散时间 (FIR) |
+| P(z) 阶数 | 7 (延迟 d=5 + 2 阶 FIR) |
+| S(z) 阶数 | 4 (延迟 d=2 + 2 阶 FIR) |
+| 采样频率 | $f_s = 4000$ Hz |
+| S(z) NMP 零点 | 是 ($z \approx -1.5 \pm 0.5i$, 模 > 1) |
+| 架构 | 前馈窄带 ANC + ALE |
+
+### 关键特性
+
+- **前馈结构**：P(z) 和 S(z) 均建模为纯 FIR（无极点），适合 FX-LMS 及其变体
+- **S(z) 有 NMP 零点**：标准 FXLMS 收敛慢，需 ALE 预处理参考信号
+- **论文贡献**：用 ALE 从参考麦克风提取窄带分量，减少对次级通路建模精度的依赖
+- **适合验证**：FXLMS vs ALE-FXLMS vs Jafari IMC 在 NMP 次级通路下的对比
+
+### 模型特殊性
+
+与仓库中其他模型不同，此模型包含 **两条通路 P(z) + S(z)**，对应前馈 ANC 架构：
+
+```
+噪声源 → P(z) → [+] → 误差Mic
+                  ↑
+参考Mic → ALE → W(z) → S(z) ┘
+```
+
+### 使用方
+
+| 脚本 | 用途 |
+|:---|:---|
+| (待编写) | Ho 2020 ALE-FXLMS 复现与对比 |
+
+### 加载方式
+
+```matlab
+modelFile = fullfile('..', 'dataset', 'syn_Ho2020_ALE.mat');
+load(modelFile, 'model');
+P = model.P;   % 主通路 tf 对象
+S = model.S;   % 次级通路 tf 对象
+fs = model.fs;  Ts = model.Ts;
+```
+
+---
+
 ## 附录 A：统一加载接口
 
 所有模型均可通过 `DataManager` 统一加载：

@@ -23,6 +23,7 @@ function info = DataManager(dataSource)
 %   'syn_Bai1997_4th'     - Bai 1997 耳机H∞模型   (4阶, fs=4k)
 %   'syn_Carmona2000_7th' - Carmona 2000 管道ANC   (7阶, Fs=2k)
 %   'syn_MassSpringDamper_2nd' - 质量-弹簧-阻尼器  (2阶, 连续)
+%   'syn_Ho2020_ALE'      - Ho 2020 窄带ALE前馈ANC (P:7阶, S:4阶, fs=4k)
 %   'syn_RSTtoy_2nd'      - RST教学模型           (2阶, Ts=1)
 %   'syn_whitenoise'      - 合成带限白噪声干扰模型 (状态空间)
 %   'syn_bpf'             - 合成带通滤波器被控对象模型 (状态空间)
@@ -41,6 +42,7 @@ function info = DataManager(dataSource)
         'syn_Bai1997_4th',      struct('file', 'syn_Bai1997_4th.mat',           'type', 'syn_tf'), ...
         'syn_Carmona2000_7th',  struct('file', 'syn_Carmona2000_7th.mat',       'type', 'syn_tf'), ...
         'syn_MassSpringDamper_2nd', struct('file', 'syn_MassSpringDamper_2nd.mat', 'type', 'syn_tf'), ...
+        'syn_Ho2020_ALE',        struct('file', 'syn_Ho2020_ALE.mat',             'type', 'syn_tf_feedforward'), ...
         'syn_RSTtoy_2nd',       struct('file', 'syn_RSTtoy_2nd.mat',            'type', 'syn_tf'), ...
         'syn_whitenoise',       struct('file', 'syn_whitenoise_ssmodel.mat',    'type', 'ss_model'), ...
         'syn_bpf',              struct('file', 'syn_bpf_ssmodel.mat',           'type', 'ss_model'), ...
@@ -105,6 +107,21 @@ function info = DataManager(dataSource)
             if isfield(data.model, 'G0_zpk'),  info.G0_zpk = data.model.G0_zpk; end
 
             fprintf('  %s (%s, %s)\n', data.model.name, data.model.domain, data.model.source);
+
+        case 'syn_tf_feedforward'
+            % 前馈 ANC 合成模型 (含 P(z) + S(z) 双路径)
+            info.P       = data.model.P;          % 主通路 (primary path)
+            info.S       = data.model.S;          % 次级通路 (secondary path)
+            info.P_desc  = data.model.P_desc;
+            info.S_desc  = data.model.S_desc;
+            info.domain  = data.model.domain;
+            info.orders  = data.model.orders;
+            info.source  = data.model.source;
+            info.desc    = data.model.desc;
+            if isfield(data.model, 'Ts'), info.Ts = data.model.Ts; end
+            if isfield(data.model, 'fs'), info.fs = data.model.fs; end
+
+            fprintf('  %s (P:%s, S:%s)\n', data.model.name, data.model.P_desc, data.model.S_desc);
 
         case 'ss_model'
             % 合成状态空间模型: 文件直接导出 (Af,Bf,Cf)/(Aw,Bw,Cw) 矩阵

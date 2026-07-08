@@ -38,6 +38,7 @@ info = DataManager('raw_dspace');       % dSPACE采集原始信号
 | `syn_Bai1997_4th` | `syn_Bai1997_4th.mat` | Bai & Lee (1997) IEEE SAP | 4th | 连续 fs=4k | demo3_Robust ×2 |
 | `syn_Carmona2000_7th` | `syn_Carmona2000_7th.mat` | Carmona & Alvarado (2000) ASME | 7th | 离散 Fs=2k | demo1_RST ×2 |
 | `syn_MassSpringDamper_2nd` | `syn_MassSpringDamper_2nd.mat` | 教材标准模型 | 2nd | 连续 | demo2_LQG |
+| `syn_Ho2020_ALE` | `syn_Ho2020_ALE.mat` | Ho et al. (2020) IEEE/ACM TASLP | P:7 S:4 | 离散 fs=4k | 待编写 |
 | `syn_RSTtoy_2nd` | `syn_RSTtoy_2nd.mat` | MOEA benchmark | 2nd | 离散 Ts=1 | demo4_Robust ×2 |
 | `syn_whitenoise` | `syn_whitenoise_ssmodel.mat` | 合成噪声模型 | — | SS | demo2_LQG |
 | `syn_bpf` | `syn_bpf_ssmodel.mat` | 合成滤波器模型 | — | SS | demo2_LQG |
