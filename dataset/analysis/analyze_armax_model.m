@@ -21,6 +21,10 @@ function results = analyze_armax_model(modelSource)
         modelSource = 'armax_30303022';
     end
 
+    analysisDir = fileparts(mfilename('fullpath'));
+    projectRoot = fileparts(fileparts(analysisDir));
+    run(fullfile(projectRoot, 'project_init.m'));
+
     %% 1. 加载模型
     fprintf('=== ARMAX 模型分析: %s ===\n', modelSource);
     info = DataManager(modelSource);
@@ -66,7 +70,6 @@ function results = analyze_armax_model(modelSource)
     fprintf('互质性: %s\n', ternary(is_coprime, '✓ 互质 → 系统能观', '✗ 不互质 → 系统不能观'));
 
     %% 4. 强可镇定检查
-    addpath(fullfile(fileparts(mfilename('fullpath'))));
     [isStrong, unstable_zeros] = checkStrongStabilizability(B_poly, A_poly);
     fprintf('强可镇定: %s\n', ternary(isStrong, '✓ 是', '✗ 否 (存在不稳定零点)'));
 

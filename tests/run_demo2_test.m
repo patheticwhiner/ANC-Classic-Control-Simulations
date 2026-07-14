@@ -28,9 +28,8 @@ function result = run_demo2_test(signals, test_name, variant, params)
     if ~isfield(params, 'F_init'),    params.F_init    = 1; end
     if ~isfield(params, 'bp_band'),   params.bp_band   = [200, 600]; end
 
-    addpath(fullfile(fileparts(mfilename('fullpath')), '..'));
-    addpath(fullfile(fileparts(mfilename('fullpath')), '..', 'dataset'));
-    addpath(fullfile(fileparts(mfilename('fullpath')), '..', 'functions'));
+    projectRoot = fileparts(fileparts(mfilename('fullpath')));
+    run(fullfile(projectRoot, 'project_init.m'));
 
     %% ====================================================================
     % §1. 模型加载

@@ -24,9 +24,9 @@ function run_eMOPSO(case_key)
     script_path = mfilename('fullpath');
     script_dir = fileparts(script_path);
     if isempty(script_dir), script_dir = pwd; end
-    addpath(fullfile(script_dir, '..', 'functions'));
+    project_root = fileparts(script_dir);
+    run(fullfile(project_root, 'project_init.m'));
     addpath(fullfile(script_dir, 'utils'));
-    addpath(fullfile(script_dir, '..', 'dataset'));
     addpath(script_dir);
     output_dir = fullfile(script_dir, 'output');
     if ~exist(output_dir, 'dir'), mkdir(output_dir); end

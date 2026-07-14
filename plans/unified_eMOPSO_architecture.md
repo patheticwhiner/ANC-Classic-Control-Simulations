@@ -128,7 +128,8 @@ sys_ds = d2d(sys_full, 1/1000);  % 下采样到 1kHz
 ```matlab
 function run_eMOPSO(case_key)
     % 路径初始化
-    addpath('../functions'); addpath('./utils'); addpath('../dataset');
+    run(fullfile(fileparts(mfilename('fullpath')), '..', 'project_init.m'));
+    addpath(fullfile(fileparts(mfilename('fullpath')), 'utils'));
 
     switch lower(case_key)
         case {'rst_toy', 'rst_armax'}

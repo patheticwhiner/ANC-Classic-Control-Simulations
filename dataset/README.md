@@ -60,7 +60,7 @@ info = DataManager('raw_dspace');       % dSPACE采集原始信号
 
 ### 分析工具
 
-ARMAX 模型的结构分析工具位于 `functions/analyze_armax_model.m`：
+ARMAX 模型的结构分析工具位于 `dataset/analysis/analyze_armax_model.m`：
 
 ```matlab
 % 分析 ARMAX 模型的能观标准型、互质性、零极点、灵敏度等
@@ -79,6 +79,7 @@ results = analyze_armax_model('armax_30303022');
 dataset/
 ├── README.md                           ← 本文件
 ├── DataManager.m                       ← 数据加载统一入口
+├── analysis/analyze_armax_model.m      ← ARMAX 结构与控制性质分析
 ├── armax_identification.m              ← ARMAX辨识脚本
 ├── restructure_data.m                  ← 数据重构/合并脚本 (一次性)
 ├── armax_30303022_2026-01-20.mat       ← ARMAX(30,30,30,22)辨识模型

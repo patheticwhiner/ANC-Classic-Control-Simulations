@@ -2,15 +2,17 @@
 %
 %   用法: run('tests/startup.m')  或  cd tests; startup;
 %
-%   添加: tests/, dataset/, functions/, 以及各 demo 目录
+%   添加: tests/, project_init.m 提供的公共路径，以及各 demo 目录
 
 rootDir = fileparts(mfilename('fullpath'));
 projDir = fullfile(rootDir, '..');
 
+run(fullfile(projDir, 'project_init.m'));
 addpath(rootDir);
-addpath(fullfile(rootDir, 'output'));
-addpath(fullfile(projDir, 'dataset'));
-addpath(fullfile(projDir, 'functions'));
+outputDir = fullfile(rootDir, 'output');
+if isfolder(outputDir)
+    addpath(outputDir);
+end
 addpath(fullfile(projDir, 'demo1_RST'));
 addpath(fullfile(projDir, 'demo2_LQG'));
 addpath(fullfile(projDir, 'demo3_Robust'));

@@ -23,9 +23,8 @@ function result = run_demo4_test(signals, test_name, variant, params)
         error('Demo4: 仅支持 ''fixed'' variant。ε-MOPSO 优化延后。');
     end
 
-    addpath(fullfile(fileparts(mfilename('fullpath')), '..'));
-    addpath(fullfile(fileparts(mfilename('fullpath')), '..', 'dataset'));
-    addpath(fullfile(fileparts(mfilename('fullpath')), '..', 'functions'));
+    projectRoot = fileparts(fileparts(mfilename('fullpath')));
+    run(fullfile(projectRoot, 'project_init.m'));
 
     %% ====================================================================
     % §1. 模型加载 + 降阶

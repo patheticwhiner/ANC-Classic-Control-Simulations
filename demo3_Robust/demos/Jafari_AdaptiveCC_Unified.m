@@ -7,7 +7,10 @@
 % Section D: 并列对比         — 性能表 + 统一绘图
 
 clear; close all; clc;
-addpath('..');
+scriptDir = fileparts(mfilename('fullpath'));
+projectRoot = fileparts(fileparts(scriptDir));
+run(fullfile(projectRoot, 'project_init.m'));
+addpath(fileparts(scriptDir));
 
 %% ====== 配置区 ======
 % 共享参数（Section B/C 使用；Section A 有独立覆盖）
@@ -23,7 +26,7 @@ cfg.thetaMax   = 5;        % 参数投影界
 cfg.rng_seed   = 42;       % 随机数种子
 
 %% ====== Section 0: 共享题设 ======
-modelFile = fullfile('..', '..', 'dataset', 'syn_JVC2017_3rd.mat');
+modelFile = fullfile(projectRoot, 'dataset', 'syn_JVC2017_3rd.mat');
 load(modelFile, 'model');
 G0 = model.G0;
 fs_nominal = model.fs_nominal;

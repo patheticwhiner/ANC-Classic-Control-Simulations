@@ -1,6 +1,8 @@
 %% 1 系统建模
 % 物理参数: m=1kg, k=1N/m, b=0.5N·s/m
-modelFile = fullfile('..', 'dataset', 'syn_MassSpringDamper_2nd.mat');
+scriptDir = fileparts(mfilename('fullpath'));
+run(fullfile(fileparts(scriptDir), 'project_init.m'));
+modelFile = fullfile(scriptDir, '..', 'dataset', 'syn_MassSpringDamper_2nd.mat');
 load(modelFile, 'model');
 A = model.A;  B = model.B;  C = model.C;  D = model.D;
 sys = model.sys;

@@ -4,10 +4,24 @@
 
 **尽管基于RST的研究同样可以归于loop-shaping，而被间接归于鲁棒控制，这里仍然将其作为一种较为传统的控制理论单独分类，以符合一般的经典控制教材讲授的思路。*
 
+## 项目初始化
+
+在运行 demo、测试或模型分析前，从仓库根目录执行：
+
+```matlab
+run('project_init.m');
+```
+
+公共运行期函数位于 `shared/`，由 `project_init.m` 按职责统一加载。各 demo
+自己的 `utils/` 仍由对应入口显式加入，`tools/` 中的维护命令不会自动加载。
+
 ## 工程目录
 
 ```
-LQGbasedANC/
+ANC-Classic-Control-Simulations/
+├── project_init.m 统一加载 shared/ 与 dataset/ 公共路径
+├── shared/ 跨 demo 公共运行期函数（RST、DSP、控制分析）
+├── tools/ 仓库维护与报告生成工具
 ├── assets/ 存放md文档所需的图片
 │   
 ├── signal_excitation/ 此目录下存放与工程相关的噪声模型说明
@@ -15,6 +29,7 @@ LQGbasedANC/
 ├── dataset/ 此目录下存放模型数据文件与数据导入工具 (详见 dataset/README.md)
 │   ├── README.md                    目录说明与模型清单
 │   ├── DataManager.m                数据加载统一入口
+│   ├── analysis/                    模型专用分析入口
 │   ├── armax_identification.m       ARMAX辨识脚本
 │   ├── armax_30303022_2026-01-20.mat ARMAX(30,30,30,22)辨识模型
 │   ├── syn_whitenoise_ssmodel.mat   合成带限白噪声干扰模型
@@ -124,4 +139,3 @@ git branch -D feature/<简短描述>
 **Commit Message 格式**：`<type>: <简述>`，常用 type：`fix`、`feat`、`refactor`、`docs`。
 
 **反模式**：❌ `git add -A` · ❌ force push 已共享的分支 · ❌ 一个 commit 包含多个不相关修改
-

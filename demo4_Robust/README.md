@@ -113,7 +113,7 @@ run_RST_eMOPSO
 - MATLAB R2020b 或更高版本
 - Control System Toolbox（`balred`、`ss`、`tf`，仅 `benchmark_MOEAs.m` 使用）
 - System Identification Toolbox（`idpoly`，仅 ARMAX 模型处理）
-- 项目 `functions/` 目录下的工具函数（`bezoutd.m`、`trimPolynomial.m` 等）
+- 项目 `shared/rst_synth/` 中的公共函数（`bezoutd.m`、`trimPolynomial.m` 等）
 - Signal Processing Toolbox（`freqz` 用于频域计算）
 
 ## 参考

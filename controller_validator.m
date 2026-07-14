@@ -17,7 +17,7 @@ function controller_validator()
 %   controller_validator    % 启动 GUI，手动选择模型和控制器文件
 %
 % 依赖：
-%   需要将本项目的 functions/ 目录加入 MATLAB 路径，以使用 isschur、addPolynomials 等函数。
+%   需要加载本项目的 shared/ 公共函数，以使用 isschur、addPolynomials 等函数。
 %   脚本启动时会自动尝试添加路径。
 
 %#ok<*NASGU>
@@ -26,12 +26,8 @@ function controller_validator()
 % =========================================================================
 % 路径初始化
 % =========================================================================
-% 尝试添加 functions 目录到路径
 scriptDir = fileparts(mfilename('fullpath'));
-functionsDir = fullfile(scriptDir, 'functions');
-if exist(functionsDir, 'dir') == 7
-    addpath(functionsDir);
-end
+run(fullfile(scriptDir, 'project_init.m'));
 % 同时添加当前目录（demo4_Robust 等子目录需要）
 addpath(scriptDir);
 

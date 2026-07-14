@@ -16,10 +16,11 @@
 
 clear; close all; clc;
 
-% 确保路径可达
-addpath('../functions');
-addpath('./utils');
-addpath('.');
+% 确保路径可达，且与当前工作目录无关
+scriptDir = fileparts(mfilename('fullpath'));
+run(fullfile(fileparts(scriptDir), 'project_init.m'));
+addpath(fullfile(scriptDir, 'utils'));
+addpath(scriptDir);
 
 fprintf('===========================================================\n');
 fprintf('   ε-MOPSO 参数敏感性分析\n');
@@ -30,7 +31,7 @@ fprintf('===========================================================\n\n');
 % ====================================================================
 
 % 被控对象定义（与 run_RST_eMOPSO.m 保持一致）
-modelFile = fullfile('..', 'dataset', 'syn_RSTtoy_2nd.mat');
+modelFile = fullfile(fileparts(scriptDir), 'dataset', 'syn_RSTtoy_2nd.mat');
 load(modelFile, 'model');
 B = model.B_poly;
 A = model.A_poly;

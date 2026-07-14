@@ -18,9 +18,8 @@ function result = run_demo3_test(signals, test_name, variant, params)
     if ~isfield(params, 'N_nlms'),  params.N_nlms  = 64; end
     if ~isfield(params, 'mu_nlms'), params.mu_nlms = 0.05; end
 
-    addpath(fullfile(fileparts(mfilename('fullpath')), '..'));
-    addpath(fullfile(fileparts(mfilename('fullpath')), '..', 'dataset'));
-    addpath(fullfile(fileparts(mfilename('fullpath')), '..', 'functions'));
+    projectRoot = fileparts(fileparts(mfilename('fullpath')));
+    run(fullfile(projectRoot, 'project_init.m'));
 
     info = DataManager(signals.model);
     A = info.model.A;

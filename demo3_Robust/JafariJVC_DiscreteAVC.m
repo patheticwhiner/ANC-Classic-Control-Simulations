@@ -3,9 +3,11 @@
 %[text] ## 仿真系统设置
 %[text] Example 6.1 仿真：最优K(z,theta)设计，满足 ||G0(z)F(z)K(z,theta)||\_inf=1
 clear; clc; close all;
+scriptDir = fileparts(mfilename('fullpath'));
+run(fullfile(fileparts(scriptDir), 'project_init.m'));
 
 % 离散系统G0(z)
-modelFile = fullfile('..', 'dataset', 'syn_TAC2015_3rd.mat');
+modelFile = fullfile(scriptDir, '..', 'dataset', 'syn_TAC2015_3rd.mat');
 load(modelFile, 'model');
 G0 = model.G0;
 Ts = model.Ts;

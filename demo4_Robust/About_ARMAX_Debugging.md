@@ -14,9 +14,9 @@ RST_toy 模式下一切正常：X/Y 各 2 阶，控制器阶数 ≤ 3，max|R| <
 
 切换到 ARMAX(30,30,30,22) 实测声学管道模型后，Bezout 方程解出的 R/S 系数高达 ±10⁴–±10⁵，远超出可实用范围。
 
-### 1.2 第一步排查：原始 [`bezoutd.m`](../functions/bezoutd.m) 的 `rmin=1e-16` 机制
+### 1.2 第一步排查：原始 [`bezoutd.m`](../shared/rst_synth/bezoutd.m) 的 `rmin=1e-16` 机制
 
-原始 [`bezoutd.m`](../functions/bezoutd.m:96-111) 的处理逻辑：
+原始 [`bezoutd.m`](../shared/rst_synth/bezoutd.m) 的处理逻辑：
 
 ```matlab
 rmin = 1e-16;
@@ -237,7 +237,7 @@ $$\forall j \in \{1,\dots,m\}: f_j(A) \leq f_j(B) - \varepsilon_j$$
 | [`run_eMOPSO.m`](run_eMOPSO.m:121-135) | 统一入口脚本，nX/nY 在此配置 |
 | [`bezoutd_reg.m`](utils/bezoutd_reg.m) | 改进版 Bezout 求解器（4 次迭代的最终版本） |
 | [`postprocess_RST.m`](utils/postprocess_RST.m:48-54) | 控制器后处理，已切换到 bezoutd_reg |
-| [`functions/bezoutd.m`](../functions/bezoutd.m) | 原始 Bezout 求解器（rmin=1e-16 问题源） |
+| [`shared/rst_synth/bezoutd.m`](../shared/rst_synth/bezoutd.m) | 原始 Bezout 求解器（rmin=1e-16 问题源） |
 | [`RST_objective.m`](utils/RST_objective.m) | 目标函数计算（500点频域积分） |
 | [`RST_constraints.m`](utils/RST_constraints.m) | 频域模值约束 |
 | [`eMOPSO_core.m`](utils/eMOPSO_core.m) | ε-MOPSO 算法核心 |

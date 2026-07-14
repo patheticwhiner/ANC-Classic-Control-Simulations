@@ -4,13 +4,15 @@
 %[text] 测试: 固定频率 / 线性扫频 / 非线性调频
 %[text] 结构: Part 0 公共基础 → Parts 1/2/3 独立测试案例
 clear; close all; clc;
+scriptDir = fileparts(mfilename('fullpath'));
+run(fullfile(fileparts(scriptDir), 'project_init.m'));
 %%
 %[text] ## Part 0 · 问题总述与公共基础
 %[text] 被控对象: 实测声学管道 ARMAX(30,30,30,22) @ 48kHz
 %[text] 9个非最小相位零点 → F(z) 频谱展平 → 固定 FIR(H∞插值)
 %[text] 自适应: NLMS (μ=0.05, N=64) — 替代RLS以避免P矩阵在非平稳环境衰减
 %% 0.1 模型加载
-modelFile = fullfile('..', 'dataset', 'armax_30303022_2026-01-20.mat');
+modelFile = fullfile(scriptDir, '..', 'dataset', 'armax_30303022_2026-01-20.mat');
 load(modelFile, 'ARMAXmodel');
 
 A = ARMAXmodel.model.A;             B_poly = ARMAXmodel.model.B;

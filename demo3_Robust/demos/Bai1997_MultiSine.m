@@ -2,10 +2,13 @@
 % 基于文献MSBai1977的H∞控制器设计与分析
 % ===================================================================
 clear; close all; clc;
+scriptDir = fileparts(mfilename('fullpath'));
+projectRoot = fileparts(fileparts(scriptDir));
+run(fullfile(projectRoot, 'project_init.m'));
 
 %% 1. 系统定义
 % 被控对象参数
-modelFile = fullfile('..', '..', 'dataset', 'syn_Bai1997_4th.mat');
+modelFile = fullfile(projectRoot, 'dataset', 'syn_Bai1997_4th.mat');
 load(modelFile, 'model');
 P_zp = model.G0_zpk;
 P_tf = model.G0_tf;
@@ -503,5 +506,4 @@ function [violation_S, violation_T] = analyzeViolation(S, T, W1_inv, W3_inv, w_r
         violation_T = inf;
     end
 end
-
 

@@ -174,4 +174,4 @@
 
 > <font color="#555555"><b>复审要求：</b>补充 AboutRST.md 全部空白章节 + 明确增量贡献声明 + 至少一项基线方法对比实验（FxLMS 或 H∞）。InterNoise 短文可降低要求至仅需 RLS vs LMS 对比 + 完整文档。</font>
 
-<p align="right"><font color="#95a5a6"><small>本审稿意见基于对 Carmona2000.m (715行)、Landau2005.m (491行)、AboutRST.md、相关 functions/ 及项目 README.md 的全文阅读。</small></font></p>
+<p align="right"><font color="#95a5a6"><small>本审稿意见基于对 Carmona2000.m (715行)、Landau2005.m (491行)、AboutRST.md、相关 shared/ 公共函数及项目 README.md 的全文阅读。</small></font></p>

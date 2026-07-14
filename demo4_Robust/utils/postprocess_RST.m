@@ -50,7 +50,8 @@ function [R, S, T, Syp] = postprocess_RST(theta_opt, sys_info, varargin)
     if isempty(scriptDir)
         scriptDir = pwd;
     end
-    addpath(fullfile(scriptDir, '..', 'functions'));
+    projectRoot = fileparts(fileparts(scriptDir));
+    run(fullfile(projectRoot, 'project_init.m'));
     addpath(scriptDir);  % 确保 ./utils 中 bezoutd_reg 等文件可解析
 
     % 确保 theta_opt 为列向量

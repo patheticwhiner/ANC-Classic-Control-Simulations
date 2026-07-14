@@ -36,9 +36,8 @@ function result = run_demo1_test(signals, test_name, variant, params)
     end
 
     % 路径设置
-    addpath(fullfile(fileparts(mfilename('fullpath')), '..'));
-    addpath(fullfile(fileparts(mfilename('fullpath')), '..', 'dataset'));
-    addpath(fullfile(fileparts(mfilename('fullpath')), '..', 'functions'));
+    projectRoot = fileparts(fileparts(mfilename('fullpath')));
+    run(fullfile(projectRoot, 'project_init.m'));
 
     % 加载模型
     info = DataManager(signals.model);

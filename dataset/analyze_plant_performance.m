@@ -24,9 +24,9 @@ function results = analyze_plant_performance(modelSource)
         modelSource = 'armax_30303022';
     end
 
-    addpath('..');
-    addpath('../dataset');
-    addpath('../functions');
+    datasetDir = fileparts(mfilename('fullpath'));
+    projectRoot = fileparts(datasetDir);
+    run(fullfile(projectRoot, 'project_init.m'));
 
     %% ====================================================================
     % §0. 模型加载与基本信息

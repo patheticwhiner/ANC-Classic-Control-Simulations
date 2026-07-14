@@ -25,7 +25,8 @@ scriptDir = fileparts(mfilename('fullpath'));
 if isempty(scriptDir)
     scriptDir = pwd;
 end
-addpath(fullfile(scriptDir, '..', 'functions'));
+projectRoot = fileparts(fileparts(scriptDir));
+run(fullfile(projectRoot, 'project_init.m'));
 addpath(scriptDir);
 
 % 默认参数

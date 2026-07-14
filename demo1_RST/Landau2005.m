@@ -6,6 +6,8 @@
 %%
 %[text] ### 1.1 主噪声/扰动设置
 %[text] 参考Landau等人论文中的设计方法
+scriptDir = fileparts(mfilename('fullpath'));
+run(fullfile(fileparts(scriptDir), 'project_init.m'));
 Ns = 2000;
 t = linspace(0,Ns*Ts,Ns);
 % 扰动信号（多频正弦噪声信号）模型设计
@@ -30,7 +32,7 @@ figure; plot(t, disturbance); %[output:9a619a82]
 %%
 %[text] ### 1.2 标称控制器设计
 % 系统定义 (也可独立加载, 不依赖 Carmona2000.m 的变量继承)
-modelFile = fullfile('..', 'dataset', 'syn_Carmona2000_7th.mat');
+modelFile = fullfile(scriptDir, '..', 'dataset', 'syn_Carmona2000_7th.mat');
 load(modelFile, 'model');
 A_coeffs = model.A_coeffs;
 B_coeffs = model.B_coeffs;

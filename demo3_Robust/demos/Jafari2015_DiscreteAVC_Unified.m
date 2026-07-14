@@ -8,7 +8,10 @@
 % Section E: 并列对比 —— 性能表 + 统一绘图
 
 clear; close all; clc;
-addpath('..');
+scriptDir = fileparts(mfilename('fullpath'));
+projectRoot = fileparts(fileparts(scriptDir));
+run(fullfile(projectRoot, 'project_init.m'));
+addpath(fileparts(scriptDir));
 
 %% ====== 配置区 ======
 cfg.Ts    = 1/480;
@@ -28,7 +31,7 @@ fprintf('===== Jafari 2015 TAC 离散 AVC 统一对比 =====\n');
 fprintf('Ts=%.4f, N_fir=%d, ω₀=%.4f rad/sample\n', cfg.Ts, cfg.N_fir, cfg.w_interp);
 
 %% ====== Section 0: 共享题设 ======
-modelFile = fullfile('..', '..', 'dataset', 'syn_TAC2015_3rd.mat');
+modelFile = fullfile(projectRoot, 'dataset', 'syn_TAC2015_3rd.mat');
 load(modelFile, 'model');
 G0 = model.G0;
 Ts = model.Ts;

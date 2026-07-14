@@ -35,8 +35,10 @@
 %%
 %[text] ## 1 根据表格参数构建被控对象
 clear; close all; clc;
+scriptDir = fileparts(mfilename('fullpath'));
+run(fullfile(fileparts(scriptDir), 'project_init.m'));
 % 1. 构建被控对象的传递函数
-modelFile = fullfile('..', 'dataset', 'syn_Bai1997_4th.mat');
+modelFile = fullfile(scriptDir, '..', 'dataset', 'syn_Bai1997_4th.mat');
 load(modelFile, 'model');
 P_tf = model.G0_zpk;
 

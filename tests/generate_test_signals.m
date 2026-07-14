@@ -34,9 +34,8 @@ function signals = generate_test_signals(modelName)
     % §0. 路径与模型加载
     % ====================================================================
 
-    addpath(fullfile(fileparts(mfilename('fullpath')), '..'));
-    addpath(fullfile(fileparts(mfilename('fullpath')), '..', 'dataset'));
-    addpath(fullfile(fileparts(mfilename('fullpath')), '..', 'functions'));
+    projectRoot = fileparts(fileparts(mfilename('fullpath')));
+    run(fullfile(projectRoot, 'project_init.m'));
 
     info = DataManager(modelName);
 

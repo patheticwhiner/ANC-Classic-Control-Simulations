@@ -20,7 +20,8 @@ scriptDir = fileparts(mfilename('fullpath'));
 if isempty(scriptDir)
     scriptDir = pwd;
 end
-addpath(fullfile(scriptDir, '..', 'functions'));
+projectRoot = fileparts(fileparts(scriptDir));
+run(fullfile(projectRoot, 'project_init.m'));
 addpath(scriptDir);
 
 % 加载优化结果

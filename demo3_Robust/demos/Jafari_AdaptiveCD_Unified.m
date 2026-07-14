@@ -6,7 +6,10 @@
 % Section C: 并列对比       —— 性能表 + 统一绘图 + K(z) 频响
 
 clear; close all; clc;
-addpath('..');
+scriptDir = fileparts(mfilename('fullpath'));
+projectRoot = fileparts(fileparts(scriptDir));
+run(fullfile(projectRoot, 'project_init.m'));
+addpath(fileparts(scriptDir));
 
 %% ====== 配置区 ======
 cfg.Nparam     = 20;
@@ -21,7 +24,7 @@ cfg.thetaMax   = 5;
 cfg.rng_seed   = 42;
 
 %% ====== Section 0: 共享题设 ======
-modelFile = fullfile('..', '..', 'dataset', 'syn_JVC2017_3rd.mat');
+modelFile = fullfile(projectRoot, 'dataset', 'syn_JVC2017_3rd.mat');
 load(modelFile, 'model');
 G0 = model.G0;
 fprintf('===== 共享题设: G0=0.5(s-0.2)/(s^2+s+1.25) [离散域 CD] =====\n');
