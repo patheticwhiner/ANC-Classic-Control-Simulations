@@ -9,6 +9,7 @@ projDir = fullfile(rootDir, '..');
 
 run(fullfile(projDir, 'project_init.m'));
 addpath(rootDir);
+addpath(fullfile(rootDir, 'internal'));
 outputDir = fullfile(rootDir, 'output');
 if isfolder(outputDir)
     addpath(outputDir);
@@ -20,5 +21,6 @@ addpath(fullfile(projDir, 'demo4_Robust'));
 addpath(fullfile(projDir, 'demo4_Robust', 'utils'));
 
 fprintf('测试路径已配置。\n');
-fprintf('  信号: generate_test_signals(''armax_30303022'')\n');
-fprintf('  测试: run_demoN_test(signals, ''T1'', ''fixed'')\n');
+fprintf('  可读脚本: demo1_cylinder1dm / demo2_cylinder1dm / demo3_cylinder1dm / demo4_cylinder1dm / demo5_cylinder1dm\n');
+fprintf('  完整阶段: run_cylinder1dm_stage() / run_cylinder1dm_stage(''broadband'')\n');
+fprintf('  重绘报告: render_cylinder1dm() / render_cylinder1dm(''broadband'')\n');

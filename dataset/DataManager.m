@@ -10,7 +10,7 @@ function info = DataManager(dataSource)
 %
 % 输出:
 %   info - struct，包含:
-%     .type    - 数据类型: 'armax_model' | 'ss_model' | 'lms_data' | 'raw_signal'
+%     .type    - 数据类型: 'armax_model' | 'fir_model' | 'ss_model' | 'lms_data' | 'raw_signal'
 %     .name    - 数据源名称
 %     .fs      - 采样频率 (Hz)
 %     以及该类型对应的数据字段 (见下方各 case)
@@ -28,27 +28,35 @@ function info = DataManager(dataSource)
 %   'syn_whitenoise'      - 合成带限白噪声干扰模型 (状态空间)
 %   'syn_bpf'             - 合成带通滤波器被控对象模型 (状态空间)
 %   'lms_sysid'           - LMS系统辨识实验数据 (4通道, 2026-01-20)
+%   'cylinder1dm_2k_primary_fir'   - Cylinder 1 dm 主路径 FIR(16) @2kHz
+%   'cylinder1dm_2k_secondary_fir' - Cylinder 1 dm 次级路径 FIR(16) @2kHz
 %   'raw_dspace'          - dSPACE采集原始信号数据
+
+    persistent loadedData;
+    if isempty(loadedData)
+        loadedData = struct();
+    end
 
     % 数据集根目录
     dsDir = fileparts(mfilename('fullpath'));
 
-    % 可用数据源注册表
-    sources = struct(...
-        'armax_30303022',       struct('file', 'armax_30303022_2026-01-20.mat', 'type', 'armax_model'), ...
-        'syn_TAC2015_3rd',      struct('file', 'syn_TAC2015_3rd.mat',           'type', 'syn_tf'), ...
-        'syn_JVC2017_3rd',      struct('file', 'syn_JVC2017_3rd.mat',           'type', 'syn_tf'), ...
-        'syn_JVC2017_6th',      struct('file', 'syn_JVC2017_6th.mat',           'type', 'syn_tf'), ...
-        'syn_Bai1997_4th',      struct('file', 'syn_Bai1997_4th.mat',           'type', 'syn_tf'), ...
-        'syn_Carmona2000_7th',  struct('file', 'syn_Carmona2000_7th.mat',       'type', 'syn_tf'), ...
-        'syn_MassSpringDamper_2nd', struct('file', 'syn_MassSpringDamper_2nd.mat', 'type', 'syn_tf'), ...
-        'syn_Ho2020_ALE',        struct('file', 'syn_Ho2020_ALE.mat',             'type', 'syn_tf_feedforward'), ...
-        'syn_RSTtoy_2nd',       struct('file', 'syn_RSTtoy_2nd.mat',            'type', 'syn_tf'), ...
-        'syn_whitenoise',       struct('file', 'syn_whitenoise_ssmodel.mat',    'type', 'ss_model'), ...
-        'syn_bpf',              struct('file', 'syn_bpf_ssmodel.mat',           'type', 'ss_model'), ...
-        'lms_sysid',            struct('file', 'lms_sysid_2026-01-20.mat',      'type', 'lms_data'), ...
-        'raw_dspace',           struct('file', 'raw_dspace_primpath.mat',       'type', 'raw_signal') ...
-    );
+    % 从统一模型注册表派生 DataManager 可加载数据源。
+    registered = model_registry('loadable');
+    sources = struct();
+    datasetPrefix = ['dataset' filesep];
+    projectDir = fileparts(dsDir);
+    for i = 1:numel(registered)
+        artifact = strrep(registered(i).artifact, '/', filesep);
+        if strncmp(artifact, datasetPrefix, length(datasetPrefix))
+            artifact = artifact(length(datasetPrefix)+1:end);
+            baseDir = dsDir;
+        else
+            baseDir = projectDir;
+        end
+        sources.(registered(i).loader_id) = struct( ...
+            'file', artifact, 'type', registered(i).loader_type, ...
+            'base_dir', baseDir, 'registry', registered(i));
+    end
 
     % 无参数调用：列出所有可用数据源
     if nargin == 0 || isempty(dataSource)
@@ -74,70 +82,153 @@ function info = DataManager(dataSource)
     fprintf('正在加载数据源: %s (%s)...\n', dataSource, src.file);
 
     % 统一加载
-    fullPath = fullfile(dsDir, src.file);
+    fullPath = fullfile(src.base_dir, src.file);
     if ~exist(fullPath, 'file')
         error('数据文件不存在: %s', fullPath);
     end
 
-    data = load(fullPath);
+    cacheKey = matlab.lang.makeValidName(dataSource);
+    if isfield(loadedData, cacheKey)
+        data = loadedData.(cacheKey);
+    else
+        data = load(fullPath);
+        loadedData.(cacheKey) = data;
+    end
     info.name = dataSource;
     info.type = src.type;
 
     switch src.type
         case 'armax_model'
             % ARMAX辨识模型
+            if ~isfield(data, 'ARMAXmodel') || ~isfield(data.ARMAXmodel, 'model')
+                error('DataManager:InvalidARMAXModel', ...
+                    '数据文件 %s 缺少 ARMAXmodel.model。', src.file);
+            end
             info.model  = data.ARMAXmodel.model;   % idpoly 对象
             info.orders = data.ARMAXmodel.orders;  % [na nb nc nk]
             info.fs     = data.ARMAXmodel.fs;
+            info.registry = src.registry;
+            info.artifact = fullPath;
+
+            if isempty(info.model)
+                warning('DataManager:EmptyARMAXModel', ...
+                    ['ARMAXmodel.model 为空；当前文件只有阶次和采样率，' ...
+                     '不能重新计算零极点或设计控制器。']);
+            end
 
             fprintf('  ARMAX(%d,%d,%d,%d), fs=%d Hz\n', ...
                 info.orders(1), info.orders(2), info.orders(3), info.orders(4), info.fs);
 
-        case 'syn_tf'
-            % 合成传递函数模型 (论文/教材中的理论被控对象)
-            info.G0     = data.model.G0;       % tf/zpk 对象
-            info.domain = data.model.domain;   % 'continuous' | 'discrete'
-            info.orders = data.model.orders;
-            info.source = data.model.source;
-            info.desc   = data.model.desc;
-            if isfield(data.model, 'Ts'),      info.Ts = data.model.Ts; end
-            if isfield(data.model, 'fs'),      info.fs = data.model.fs; end
-            if isfield(data.model, 'fs_nominal'), info.fs = data.model.fs_nominal; end
-            if isfield(data.model, 'G0_tf'),   info.G0_tf = data.model.G0_tf; end
-            if isfield(data.model, 'G0_zpk'),  info.G0_zpk = data.model.G0_zpk; end
+        case 'fir_model'
+            % LMS FIR artifacts are stored as struct s.w/s.fs/s.mu.
+            if ~isfield(data, 's') || ~isfield(data.s, 'w') || ...
+                    ~isfield(data.s, 'fs')
+                error('DataManager:InvalidFIRModel', ...
+                    'FIR 文件 %s 缺少 s.w 或 s.fs。', src.file);
+            end
+            w = double(data.s.w(:).');
+            info.model = struct('A', 1, 'B', w);
+            info.orders = [0, numel(w) - 1, 0, 0];
+            info.fs = double(data.s.fs);
+            info.mu = iff_field(data.s, 'mu', NaN);
+            info.registry = src.registry;
+            info.artifact = fullPath;
+            fprintf('  FIR(%d), fs=%d Hz, mu=%.3g\n', ...
+                numel(w), info.fs, info.mu);
 
-            fprintf('  %s (%s, %s)\n', data.model.name, data.model.domain, data.model.source);
+        case 'syn_tf'
+            % 文献/教学 LTI 模型可能保存为 tf、zpk 或 ss。
+            if ~isfield(data, 'model')
+                error('DataManager:InvalidSyntheticModel', ...
+                    '数据文件 %s 缺少 model struct。', src.file);
+            end
+            model = data.model;
+            if isfield(model, 'G0')
+                info.G0 = model.G0;
+            elseif isfield(model, 'G0_zpk')
+                info.G0 = model.G0_zpk;
+            elseif isfield(model, 'G0_tf')
+                info.G0 = model.G0_tf;
+            elseif isfield(model, 'sys')
+                info.G0 = model.sys;
+                info.sys = model.sys;
+            else
+                error('DataManager:MissingLTIRepresentation', ...
+                    '模型 %s 不含 G0、G0_zpk、G0_tf 或 sys。', dataSource);
+            end
+            info.domain = model.domain;
+            info.orders = model.orders;
+            info.source = model.source;
+            info.desc   = model.desc;
+            if isfield(model, 'Ts'),      info.Ts = model.Ts; end
+            if isfield(model, 'fs'),      info.fs = model.fs; end
+            if isfield(model, 'fs_nominal'), info.fs = model.fs_nominal; end
+            if isfield(model, 'G0_tf'),   info.G0_tf = model.G0_tf; end
+            if isfield(model, 'G0_zpk'),  info.G0_zpk = model.G0_zpk; end
+            if isfield(model, 'A'), info.A = model.A; end
+            if isfield(model, 'B'), info.B = model.B; end
+            if isfield(model, 'C'), info.C = model.C; end
+            if isfield(model, 'D'), info.D = model.D; end
+            if isfield(model, 'A_coeffs'), info.A_coeffs = model.A_coeffs; end
+            if isfield(model, 'B_coeffs'), info.B_coeffs = model.B_coeffs; end
+            if isfield(model, 'A_poly'), info.A_poly = model.A_poly; end
+            if isfield(model, 'B_poly'), info.B_poly = model.B_poly; end
+            if isfield(model, 'd_delay'), info.delay_samples = model.d_delay; end
+
+            fprintf('  %s (%s, %s)\n', model.name, model.domain, model.source);
 
         case 'syn_tf_feedforward'
             % 前馈 ANC 合成模型 (含 P(z) + S(z) 双路径)
-            info.P       = data.model.P;          % 主通路 (primary path)
-            info.S       = data.model.S;          % 次级通路 (secondary path)
-            info.P_desc  = data.model.P_desc;
-            info.S_desc  = data.model.S_desc;
-            info.domain  = data.model.domain;
-            info.orders  = data.model.orders;
-            info.source  = data.model.source;
-            info.desc    = data.model.desc;
-            if isfield(data.model, 'Ts'), info.Ts = data.model.Ts; end
-            if isfield(data.model, 'fs'), info.fs = data.model.fs; end
-
-            fprintf('  %s (P:%s, S:%s)\n', data.model.name, data.model.P_desc, data.model.S_desc);
+            if isfield(data, 'model')
+                model = data.model;
+                info.P       = model.P;
+                info.S       = model.S;
+                info.P_desc  = model.P_desc;
+                info.S_desc  = model.S_desc;
+                info.domain  = model.domain;
+                info.orders  = model.orders;
+                info.source  = model.source;
+                info.desc    = model.desc;
+                if isfield(model, 'Ts'), info.Ts = model.Ts; end
+                if isfield(model, 'fs'), info.fs = model.fs; end
+                fprintf('  %s (P:%s, S:%s)\n', model.name, model.P_desc, model.S_desc);
+            elseif all(isfield(data, {'P_num', 'P_den', 'S_num', 'S_den'}))
+                % 兼容仅保存 FIR 系数的轻量 MAT 版本。
+                info.fs = sscanf(src.registry.sample_rate, '%f', 1);
+                info.Ts = 1 / info.fs;
+                info.P_num = data.P_num; info.P_den = data.P_den;
+                info.S_num = data.S_num; info.S_den = data.S_den;
+                info.P = tf(data.P_num, data.P_den, info.Ts, 'Variable', 'z^-1');
+                info.S = tf(data.S_num, data.S_den, info.Ts, 'Variable', 'z^-1');
+                info.P_desc = 'Primary-path FIR coefficients';
+                info.S_desc = 'Secondary-path FIR coefficients';
+                info.domain = src.registry.domain;
+                info.orders = [numel(data.P_num)-1, numel(data.S_num)-1];
+                info.source = src.registry.source;
+                info.desc = src.registry.notes;
+                fprintf('  %s (coefficient-only P/S MAT)\n', dataSource);
+            else
+                error('DataManager:InvalidFeedforwardModel', ...
+                    '模型 %s 不含 model struct 或 P/S 系数。', dataSource);
+            end
 
         case 'ss_model'
             % 合成状态空间模型: 文件直接导出 (Af,Bf,Cf)/(Aw,Bw,Cw) 矩阵
             % 构建 ss 对象以便统一操作
             if isfield(data, 'Aw')
-                % 含干扰模型的系统 (如 syn_whitenoise)
-                % 构建增广系统: 控制通道Bf + 干扰通道Bw, 输出[Cf, Cw]
-                n_plant = size(data.Af, 1);
+                % 干扰状态空间模型；部分历史文件不含被控对象矩阵。
                 n_dist  = size(data.Aw, 1);
-                info.ss_plant = ss(data.Af, data.Bf, data.Cf, 0, -1);
                 info.ss_dist  = ss(data.Aw, data.Bw, data.Cw, 0, -1);
                 info.fs = 1000;  % 合成模型默认采样频率
-                fprintf('  合成模型 (含干扰): plant=%d阶, dist=%d阶\n', n_plant, n_dist);
-                % 同时保留原始矩阵以便向后兼容
-                info.Af = data.Af; info.Bf = data.Bf; info.Cf = data.Cf;
                 info.Aw = data.Aw; info.Bw = data.Bw; info.Cw = data.Cw;
+                if isfield(data, 'Af')
+                    n_plant = size(data.Af, 1);
+                    info.ss_plant = ss(data.Af, data.Bf, data.Cf, 0, -1);
+                    info.Af = data.Af; info.Bf = data.Bf; info.Cf = data.Cf;
+                    fprintf('  合成模型: plant=%d阶, dist=%d阶\n', n_plant, n_dist);
+                else
+                    fprintf('  合成干扰模型: dist=%d阶\n', n_dist);
+                end
             else
                 % 仅被控对象的系统 (如 syn_bpf)
                 info.ss = ss(data.Af, data.Bf, data.Cf, 0, -1);
@@ -168,4 +259,12 @@ function info = DataManager(dataSource)
     end
 
     fprintf('  加载完成。\n');
+end
+
+function value = iff_field(s, fieldName, fallback)
+if isfield(s, fieldName)
+    value = s.(fieldName);
+else
+    value = fallback;
+end
 end

@@ -2,6 +2,18 @@
 
 此目录存放主动噪声控制仿真所需的**模型数据文件**以及**数据导入工具**。所有`.mat`文件采用统一命名规范：`<类型>_<特征标识>_<日期>.mat`。
 
+## 统一管理原则
+
+`model_registry.m` 是模型身份、来源、角色、采样信息、使用方和成熟度的单一事实源。`DataManager.m` 的可加载清单由注册表自动派生，不再维护第二份 case 清单。
+
+全工程分析入口是根目录的 [`MODEL_ANALYSIS_REPORT.md`](../MODEL_ANALYSIS_REPORT.md)。报告首先解释模型族、动力学特征、控制难点和可比性边界，然后动态扫描默认不提交 Git 的 `sysid_models/`，列出每个辨识模型的批次、结构、采样率、验证报告和风险状态。
+
+```matlab
+addpath('dataset', 'tools');
+records = model_registry();      % 查看全部登记记录
+generate_model_report();         % 更新统一报告并执行完整性审计
+```
+
 ## 快速使用
 
 ```matlab
@@ -49,8 +61,18 @@ info = DataManager('raw_dspace');       % dSPACE采集原始信号
 
 | 文件 | 功能 |
 |---|---|
-| `DataManager.m` | 统一数据加载入口，case-switch选择模型 |
+| `model_registry.m` | 模型身份与来源的单一事实源；包含 DataManager 模型和脚本内嵌模型 |
+| `analyze_model_dynamics.m` | 统一计算稳定性、NMP/边界零点、延迟和频率响应尺度 |
+| `DataManager.m` | 统一数据加载入口，从注册表派生可用模型 |
 | `armax_identification.m` | 从原始信号数据辨识ARMAX模型并保存 |
+
+## 新模型接入
+
+1. 保存模型资产；实测辨识模型同时保存同名 Markdown 报告。
+2. 在 `model_registry.m` 登记稳定、长期使用的模型。临时候选可先留在 `sysid_models/<批次>/`，由报告动态发现。
+3. 需要统一加载时填写 `loader_id` 与 `loader_type`，`DataManager` 会自动出现该入口。
+4. 运行 `generate_model_report()`，审查缺失资产、未登记 MAT 文件和脚本内嵌模型候选。
+5. 只有同一对象、采样率、测试信号、指标和统计窗口一致时，才进入跨控制器对比表。
 
 ## ARMAX 模型分析
 

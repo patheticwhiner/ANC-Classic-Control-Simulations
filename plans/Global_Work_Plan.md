@@ -3,6 +3,14 @@
 > 目标: 在理解被控对象性能上限的基础上，用同一 ARMAX 模型补全 demo1–4 的控制器设计实验，积累实证依据后决定研究方向。
 > 创建: 2026-06-13
 
+> **当前状态（2026-07-16）**：Demo1–4 的 Cylinder 1 dm 主阶段已冻结。Demo1/2/3 的
+> T1/T2 总体指标满足统一成功标准；Demo2、Demo3 的 T2 仍分别存在 4.53 dB、13.55 dB
+> 的最差局部边缘限制；Demo4 因未限幅需求超过 4 而失败。宽带 T3 已从主比较中独立，
+> 四种现有宽带设计均无效。当前证据以 `tests/DEMO1234_STAGE_REPORT.md`、
+> `tests/BROADBAND_CYLINDER1DM_REPORT.md` 和相应 CSV 为准。下文较早的阶段状态、问号表格和
+> 旧数值保留为历史规划，不作为当前结果。MATLAB/FPGA 结合工作见
+> `plans/FPGA_ANC_INTEGRATION_EXPERIMENT_PLAN.md`。
+
 ---
 
 ## 背景
@@ -78,33 +86,56 @@
 
 ### 2.3 接口约定
 
-各 demo 通过 `signals.model` → `DataManager` 自行加载模型。控制器函数签名：
+三个 Demo 的共享控制器计算使用统一的内部函数签名：
 
 ```matlab
-function result = run_demoX_test(signals, test_name, variant, params)
+function result = controller_demoX(signals, test_name, variant, params)
 ```
 
 - `signals`: Phase 2 生成的 struct（含 `.model`, `.fs`, `.T1/.T2/.T3`）
 - `test_name`: `'T1'` / `'T2'` / `'T3'`
 - `variant`: `'fixed'` / `'adaptive'`
 - `params`: demo 专用参数 struct
-- `result`: 标准化 struct（字段见 `tests/controller_interface.m`）
+- `result`: 标准化 struct，由 `tests/internal/compute_metrics.m` 生成
 
 ### 2.4 输出文件
 
 ```
-dataset/test_signals_armax30303022.mat  # T1+T2+T3 + y_open + meta
+dataset/cylinder1dm_2k_stage_suite.mat # 校准/评价 T1+T2+T3 + y_open + meta
 tests/
-├── generate_test_signals.m             # 信号生成脚本（参数化模型源）
-├── compute_metrics.m                   # 统一指标计算
-├── controller_interface.m              # 接口规范 + init_result() 模板
+├── demo1_cylinder1dm.m                 # 可读 Demo1 Part 脚本
+├── demo2_cylinder1dm.m                 # 可读 Demo2 Part 脚本
+├── demo3_cylinder1dm.m                 # 可读 Demo3 Part 脚本
+├── run_cylinder1dm_stage.m             # 调参、冻结评价和报告
 ├── README.md
 └── output/                             # Phase 3 各 demo 结果
 ```
 
 ---
 
-## Phase 3: demo1–4 统一模型实验 (待启动)
+## Phase 3: demo1–4 统一模型实验 (Demo1–3 已冻结，Demo4 待复核后启动)
+
+**执行阶段门**：先完成并冻结 Demo1–3 的独立调参、控制器验证、原生分析图和阶段报告；经复核后再启动耗时较长的 Demo4 ε-MOPSO。Demo4 不阻塞 Demo1–3 的交付，也不得反向改变已冻结的评价集或验收口径。
+
+**当前状态（2026-07-14）**：Demo1–3 已完成校准搜索、冻结留出评价、12 张分析图和独立报告。三种方法均在 357 Hz 留出信号上得到超过 20 dB 且不饱和的控制器；Demo1 Q-RLS 与 Demo3 FxLMS 通过 300–420 Hz 扫频评价。100–500 Hz 宽带场景未得到成功控制器。Demo4 尚未运行。
+
+**报告组织**：Demo1–3 各自生成独立的参数搜索记录、稳定性与裕度分析、原始论文/脚本风格的时频域分析图、校准集与评价集指标，以及单独的 Markdown 报告。顶层综合报告只汇总已经冻结的留出评价结果，不以校准阶段的最佳结果参与算法比较。Demo4 后续独立补充 Pareto 前沿、收敛历史、约束违例和所选控制器验证。
+
+**结果呈现优先级**：各 Demo 报告以仿真图像作为主要结果证据，图中直接标注关键抑制、稳定性和控制量信息；参数表、逐实例指标和机器可读结果作为复核与追溯材料，不以汇总柱状图替代原始时域、频域和算法过程分析。
+
+**Demo1 强制图组**：开环/闭环时域波形与 PSD、灵敏度与互补灵敏度、扰动抑制曲线、闭环极点，以及自适应 Q/RLS 收敛过程。
+
+**Demo2 强制图组**：扰动、残差、控制和反噪声时序、开闭环 PSD、控制器与估计器稳定性，以及增益或自适应参数变化过程。
+
+**Demo3 强制图组**：定频开闭环波形与 PSD、扫频分段抑制与时频图、宽带开闭环 PSD，以及 NLMS 误差和系数收敛过程。
+
+所有主要结果图必须直接标注抑制量、峰值控制量、稳定性和 20 dB 成功判据，不以正文中的孤立数字替代图内证据。
+
+**执行器验收**：统一采用归一化硬限幅 `u ∈ [-5, 5]`。调参候选要求未限幅峰值 `|u| <= 4`；最终评价必须同时保留未限幅需求和实际限幅信号，发生任何限幅的控制器标记为失败，不得仅报告限幅后的抑制结果。
+
+**场景专用设计**：允许各控制器变体针对 T1、T2、T3 分别设计并冻结参数。每套参数只使用对应类别的校准子集，最终在同类但未参与调参的评价信号上运行；不得直接针对最终评价波形或其指标重新调参。
+
+Cylinder 1 dm 阶段实验中，T1 使用 357 Hz 主导频点，T2 使用围绕该频点的 300–420 Hz 双向扫频检验跟踪与频率鲁棒性，T3 使用 100–500 Hz 带限噪声检验宽带能力。T2 不承担全工程频带宽带验收，避免与 T3 重复。
 
 ### 3.1 demo1: Youla 极点配置 + 自适应 Q
 

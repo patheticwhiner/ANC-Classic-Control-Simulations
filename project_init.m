@@ -12,3 +12,9 @@ addpath(projectRoot);
 addpath(fullfile(projectRoot, 'dataset'));
 addpath(fullfile(projectRoot, 'dataset', 'analysis'));
 addpath(genpath(fullfile(projectRoot, 'shared')));
+
+% 系统辨识工具箱（通过 mpm 安装，MATLAB 不会自动加入路径）
+identRoot = '/usr/local/MATLAB/R2025b/toolbox/ident';
+if exist(identRoot, 'dir') == 7
+    addpath(genpath(identRoot));
+end

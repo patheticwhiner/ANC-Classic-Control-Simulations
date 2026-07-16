@@ -28,3 +28,6 @@ output/
 
 # Large binary data (not version-controlled)
 sysid_models/
+
+# Claude Code local files
+.claude/skills/

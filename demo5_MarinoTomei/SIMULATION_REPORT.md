@@ -268,3 +268,22 @@ Marino & Tomei 系列方法的核心优势在于**最小化先验假设**:
 4. Marino, R. & Tomei, P. (2016). "Adaptive disturbance rejection for unknown stable linear systems." *Transactions of the Institute of Measurement and Control*, 38(6): 640–647.
 5. Marino, R. & Tomei, P. (2021). "Adaptive output regulation for minimum-phase systems with unknown relative degree." *Automatica*, 130: 109670.
 6. Tomei, P. & Marino, R. (2023). "Adaptive regulation for minimum phase systems with unknown relative degree and uncertain exosystems." *Automatica*, 147: 110678.
+
+---
+
+## 附录：与统一测量 FIR 测试的交叉核对
+
+原始 `demo5_MarinoTomei/MarinoTomei_ANC_freq_estimator.m` 使用手写次级路径、双音扰动和更新后的内模状态输出；它的作用是验证 Marino-Tomei 内模方程、反馈符号和频率自适应律在合成条件下能够工作。将同一控制器结构放入 `tests/` 的同一路径和双音设置后仍能复现抑制趋势，因此没有发现核心算法被实现成反号或失效版本。
+
+`tests/` 早期正式候选与原始 Demo 的主要偏差是输出时序：曾使用 `output_timing='previous'`，比参考实现多一拍控制滞后；同时，可读脚本在缺少兼容冻结结果时会回放一个已知无效的 adaptive fallback，造成控制量接近零的假象。当前统一测量 FIR 实验已改为 `output_timing='updated'`，并将 fallback 对齐到校准候选；`previous` 只保留为 ARMAX 离散相位诊断。
+
+当前 2 kHz LMS FIR(16) 留出评价结果为：T1 fixed 抑制 **25.75 dB**、未限幅需求 **3.304**、限幅 **0 次**，满足成功标准；T1 adaptive 抑制 **11.21 dB**，尚未达到 20 dB；T2 扫频抑制约 **0 dB**，且 Case A 有效次级响应在频带内跨零，不适用于该结构。因此当前结论是“固定窄带版本局部成功”，不是完整自适应扫频控制器成功。
+
+可复现实验入口：
+
+```matlab
+run('tests/startup.m');
+test_demo5_diagnostics;
+stage = run_cylinder1dm_stage();
+demo5_cylinder1dm;
+```

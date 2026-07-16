@@ -45,11 +45,12 @@ function result = compute_metrics(y_open, y_closed, u, test_struct, meta)
             error('Unknown variant: ''%s''. Use ''fixed'' or ''adaptive''.', meta.variant);
     end
 
-    idx_start = round(t_win_start * fs) + 1;
+    idx_start = min(round(t_win_start * fs) + 1, ...
+        max(1, length(y_open) - round(0.5 * fs)));
     idx_total = idx_start:length(y_open);
     n_total   = length(idx_total);
     % 后 80%
-    idx_ss    = idx_total(round(0.2 * n_total):end);
+    idx_ss    = idx_total(max(1, round(0.2 * n_total)):end);
 
     y_open_ss   = y_open(idx_ss);
     y_closed_ss = y_closed(idx_ss);
@@ -65,8 +66,8 @@ function result = compute_metrics(y_open, y_closed, u, test_struct, meta)
     supp_breakdown = [];
     if strcmp(meta.test, 'T2') && isfield(test_struct, 'f_inst')
         f_inst  = test_struct.f_inst;
-        f_start = test_struct.f_range(1);
-        f_end   = test_struct.f_range(2);
+        f_start = min(test_struct.f_range);
+        f_end   = max(test_struct.f_range);
         bin_width = 20;  % Hz
 
         bin_edges = f_start:bin_width:f_end;

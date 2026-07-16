@@ -1,14 +1,16 @@
 % 需要检查状态空间表示中是否含有延迟
 clear; close all; clc;
 %%
-load('..\dataset\syn_whitenoise_ssmodel.mat');
-load('..\dataset\armax_30303022_2026-01-20.mat');
+% 以脚本自身位置为基准定位 dataset/，不依赖 MATLAB 当前目录
+script_dir = fileparts(mfilename('fullpath'));
+repo_root = fullfile(script_dir, '..');
+load(fullfile(repo_root, 'dataset', 'syn_whitenoise_ssmodel.mat'));
+load(fullfile(repo_root, 'dataset', 'armax_30303022_2026-01-20.mat'));
 % 将ARMAX模型转换为状态空间模型
-% ARMAX模型是一个idpoly对象，包含A, B, C多项式系数。
-% 我们使用ssdata函数将其转换为状态空间表示。
-% Af, Bf, Cf 分别是次能馈通路的系统矩阵，输入矩阵和输出矩阵
-% Gf 是噪声模型矩阵
-[Af, Bf, Cf, ~, Gf] = ssdata(ARMAXmodel.model);
+% ARMAXmodel.model 是 idpoly 对象，需要先用 idss() 转为状态空间，
+% 再通过 ssdata() 提取系统矩阵
+sys_idss = idss(ARMAXmodel.model);
+[Af, Bf, Cf, ~, Gf] = ssdata(sys_idss);   % Gf = Kalman增益（噪声模型矩阵）
 fs = ARMAXmodel.fs;
 Ts = 1/fs;
 

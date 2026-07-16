@@ -1,9 +1,13 @@
 % 需要检查状态空间表示中是否含有延迟
 clear; close all; clc;
 
+% 以脚本自身位置为基准定位 dataset/，不依赖 MATLAB 当前目录
+script_dir = fileparts(mfilename('fullpath'));
+repo_root = fullfile(script_dir, '..');
+
 %% 1. 加载数据与模型构建
-load('..\dataset\syn_whitenoise_ssmodel.mat');
-load('..\dataset\syn_bpf_ssmodel.mat');
+load(fullfile(repo_root, 'dataset', 'syn_whitenoise_ssmodel.mat'));
+load(fullfile(repo_root, 'dataset', 'syn_bpf_ssmodel.mat'));
 
 % --- 耦合系统 (Plant) ---
 n = size(Af, 1);    % 原系统状态维度

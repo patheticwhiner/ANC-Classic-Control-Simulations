@@ -15,6 +15,19 @@ run('project_init.m');
 公共运行期函数位于 `shared/`，由 `project_init.m` 按职责统一加载。各 demo
 自己的 `utils/` 仍由对应入口显式加入，`tools/` 中的维护命令不会自动加载。
 
+## 模型统一入口
+
+- [`MODEL_ANALYSIS_REPORT.md`](MODEL_ANALYSIS_REPORT.md)：模型族地图、动力学画像、逐模型解读、可比性边界、来源链路与完整性审计。
+- [`dataset/model_registry.m`](dataset/model_registry.m)：模型身份与来源的可机读单一事实源，`DataManager` 从这里派生加载入口。
+- [`dataset/ModelReference.md`](dataset/ModelReference.md)：论文/教学模型的公式、零极点和关键性质详解。
+
+模型新增、删除或移动后，在 MATLAB 中运行：
+
+```matlab
+addpath('dataset', 'tools');
+generate_model_report();
+```
+
 ## 工程目录
 
 ```
@@ -28,6 +41,7 @@ ANC-Classic-Control-Simulations/
 │   └── AboutExcitation.md 此文档提供子目录下文件的说明
 ├── dataset/ 此目录下存放模型数据文件与数据导入工具 (详见 dataset/README.md)
 │   ├── README.md                    目录说明与模型清单
+│   ├── model_registry.m             模型身份、来源、用途和成熟度注册表
 │   ├── DataManager.m                数据加载统一入口
 │   ├── analysis/                    模型专用分析入口
 │   ├── armax_identification.m       ARMAX辨识脚本

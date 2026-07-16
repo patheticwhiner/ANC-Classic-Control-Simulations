@@ -1,6 +1,6 @@
 # 项目文档索引
 
-> 生成: 2026-06-13 | 文档总数: 38 (不含 .claude/memory/)
+> 生成: 2026-07-13 | 文档总数: 41 (不含 .claude/memory/ 与本机 sysid_models/)
 
 ## 使用指南
 
@@ -22,6 +22,7 @@
 | `README.md` | 🎯🔧 | ✅ | 项目主入口 — 概述、目录结构、四个 demo 简介 |
 | `CONTEXT.md` | 🎯🔧 | ✅ | 术语表 — 规范术语定义 (抑制/收敛/稳态/测试基准等) |
 | `DOCUMENT_INDEX.md` | 🎯🔧 | ✅ | 本文件 — 全项目文档索引 |
+| `MODEL_ANALYSIS_REPORT.md` | 🎯🔧 | ✅ | **模型统一入口** — 模型地图、动力学画像、逐模型解读、可比性与完整性审计 |
 | `shared/README.md` | 🔧 | ✅ | 公共运行期函数的职责边界、目录归类与加载约定 |
 | `tools/README.md` | 🔧 | ✅ | 仓库维护工具与显式调用方式 |
 
@@ -30,6 +31,7 @@
 | 文件 | 读者 | 状态 | 用途 |
 |:---|:---|:---|:---|
 | `plans/Global_Work_Plan.md` | 🎯🔧 | ✅ | 四阶段全局计划 (Phase 1→4), 含当前状态和决策框架 |
+| `plans/FPGA_ANC_INTEGRATION_EXPERIMENT_PLAN.md` | 🔧 | ✅ | MATLAB 冻结控制器与 FPGA FIR/IIR/FxNLMS 的分阶段结合实验计划 |
 | `plans/unified_eMOPSO_architecture.md` | 🔧 | 📝 | eMOPSO 统一入口架构设计 (TODO 未完成) |
 
 ## 测试套件
@@ -37,12 +39,17 @@
 | 文件 | 读者 | 状态 | 用途 |
 |:---|:---|:---|:---|
 | `tests/README.md` | 🔧 | ✅ | tests/ 使用说明 — 信号生成 → 批量运行 → 结果解读 |
+| `tests/DEMO1234_STAGE_REPORT.md` | 🎯🔧 | ✅ | T1/T2 主阶段冻结评价，保留 fixed/adaptive 比较与局部扫频限制 |
+| `tests/BROADBAND_CYLINDER1DM_REPORT.md` | 🎯🔧 | ✅ | 独立 T3 宽带失败边界，不参与主阶段比较 |
 
 ## 数据集
 
 | 文件 | 读者 | 状态 | 用途 |
 |:---|:---|:---|:---|
 | `dataset/README.md` | 🔧 | ✅ | dataset/ 目录索引 — 可用模型、DataManager 用法 |
+| `dataset/ModelReference.md` | 🎯🔧 | ✅ | 论文/教学模型的公式、来源与关键性质 |
+| `dataset/model_registry.m` | 🔧 | ✅ | 模型身份与来源的可机读单一事实源 |
+| `dataset/analyze_model_dynamics.m` | 🔧 | ✅ | 从当前模型计算稳定性、零点约束、延迟与增益尺度 |
 | `dataset/About_Plant_Performance.md` | 🎯🔧 | ✅ | Phase 1 被控对象性能上限分析 — Bode/Poisson/延迟三层约束 |
 
 ---
