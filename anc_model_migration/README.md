@@ -10,6 +10,20 @@ addpath('anc_model_migration');
 anc_migration_designer_gui;
 ```
 
+面向部署的上层工具可以限制 GUI 中可选的控制器，并注入经过审查的
+部署导出函数。例如 dSPACE 固定反馈 IIR 页面只显示两个固定 RST 入口：
+
+```matlab
+anc_migration_designer_gui( ...
+    'ControllerIds', {'demo1_rst_fixed','demo4_emopso_rst'}, ...
+    'DeploymentExporter', @export_fixed_iir_controller);
+```
+
+部署按钮只在留出评价 `migration.summary.passed` 为真时启用。迁移后端
+本身仍保存完整 `migration` 证据；具体的 RTI 系数格式、拓扑和采样率
+检查由注入的部署导出函数负责，避免把反馈 `R/S` 与同名的前馈滤波器
+系数混用。
+
 界面提供：
 
 - 自动发现 `sysid_models/20260718` 中匹配的主路径/次级路径模型对；

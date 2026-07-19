@@ -3,10 +3,21 @@ function fig = anc_migration_designer_gui(varargin)
 %
 %   anc_migration_designer_gui
 %   fig = anc_migration_designer_gui('Visible','off')
+%   fig = anc_migration_designer_gui('ControllerIds', ...
+%       {'demo1_rst_fixed','demo4_emopso_rst'}, ...
+%       'DeploymentExporter', @my_exporter)
 
 parser = inputParser;
 addParameter(parser, 'Visible', 'on', @(x) any(strcmpi(x, {'on','off'})));
 addParameter(parser, 'ModelRoot', '', @(x) ischar(x) || isstring(x));
+addParameter(parser, 'ControllerIds', {}, ...
+    @(x) iscell(x) || isstring(x) || ischar(x));
+addParameter(parser, 'WindowName', 'ANC Model Migration Designer', ...
+    @(x) ischar(x) || isstring(x));
+addParameter(parser, 'DeploymentExporter', [], ...
+    @(x) isempty(x) || isa(x, 'function_handle'));
+addParameter(parser, 'DeploymentDirectory', '', ...
+    @(x) ischar(x) || isstring(x));
 parse(parser, varargin{:});
 
 tool_dir = fileparts(mfilename('fullpath'));
@@ -22,15 +33,22 @@ if isempty(pairs)
         'No compatible primary/secondary pairs were found under %s.', ...
         defaults.model_root);
 end
-controllers = anc_controller_catalog();
+controllers = select_controllers(anc_controller_catalog(), ...
+    parser.Results.ControllerIds);
+if ~ismember(defaults.design.controller_id, {controllers.id})
+    defaults.design.controller_id = controllers(1).id;
+end
 default_pair = select_default_pair(pairs);
+deployment_exporter = parser.Results.DeploymentExporter;
+deployment_directory = char(parser.Results.DeploymentDirectory);
+has_deployment_export = ~isempty(deployment_exporter);
 
 screen = get(groot, 'ScreenSize');
 window_width = min(1480, max(1100, screen(3)-100));
 window_height = min(920, max(720, screen(4)-140));
 position = [max(20, (screen(3)-window_width)/2), ...
     max(30, (screen(4)-window_height)/2), window_width, window_height];
-fig = uifigure('Name', 'ANC Model Migration Designer', ...
+fig = uifigure('Name', char(parser.Results.WindowName), ...
     'Position', position, 'Visible', parser.Results.Visible, ...
     'Tag', 'anc_migration_designer_gui');
 fig.UserData = struct('result', [], 'pairs', pairs, 'catalog', catalog);
@@ -181,22 +199,40 @@ title(axes_handles(3), 'Calibration candidates');
 title(axes_handles(4), 'Control demand');
 
 %% Persistent action/status strip.
-action = uigridlayout(outer, [2 5]);
+if has_deployment_export
+    action_columns = 6;
+    action = uigridlayout(outer, [2 action_columns]);
+    action.ColumnWidth = {'1x','1x','1.4x','1x','1x','1x'};
+else
+    action_columns = 5;
+    action = uigridlayout(outer, [2 action_columns]);
+    action.ColumnWidth = {'1x','1x','1.4x','1x','1x'};
+end
 action.Layout.Row = 2;
 action.RowHeight = {30, 30};
-action.ColumnWidth = {'1x','1x','1.4x','1x','1x'};
-uibutton(action, 'Text', 'Preview scenario', ...
+preview_button = uibutton(action, 'Text', 'Preview scenario', ...
     'Tag', 'migration_preview', 'ButtonPushedFcn', @preview_scenario);
+preview_button.Layout.Column = 1;
 run_button = uibutton(action, 'Text', 'Auto tune + held-out evaluation', ...
     'Tag', 'migration_run', 'ButtonPushedFcn', @run_migration);
 run_button.Layout.Column = [2 3];
 save_button = uibutton(action, 'Text', 'Save result copy', ...
     'Tag', 'migration_save', 'Enable', 'off', 'ButtonPushedFcn', @save_copy);
+save_button.Layout.Column = 4;
+if has_deployment_export
+    deployment_button = uibutton(action, 'Text', 'Export fixed R/S', ...
+        'Tag', 'migration_export_deployment', 'Enable', 'off', ...
+        'ButtonPushedFcn', @export_deployment);
+    deployment_button.Layout.Column = 5;
+else
+    deployment_button = gobjects(0);
+end
 overwrite_box = uicheckbox(action, 'Text', 'Allow overwrite', ...
     'Value', false, 'Tag', 'migration_overwrite');
+overwrite_box.Layout.Column = action_columns;
 status = uitextarea(action, 'Editable', 'off', 'Value', {'Ready.'}, ...
     'Tag', 'migration_status');
-status.Layout.Row = 2; status.Layout.Column = [1 5];
+status.Layout.Row = 2; status.Layout.Column = [1 action_columns];
 
 manual_store = struct();
 current_controller_id = char(controller_drop.Value);
@@ -443,6 +479,9 @@ update_compatibility();
             state.result = migration;
             fig.UserData = state;
             save_button.Enable = 'on';
+            if has_deployment_export
+                deployment_button.Enable = on_off(migration.summary.passed);
+            end
             plot_anc_migration_result(migration, axes_handles);
             status.Value = {sprintf(['Complete: %s, held-out %.2f dB, demand %.3f, ' ...
                 'clips %g, pass=%d.'], migration.calibration.best_name, ...
@@ -473,6 +512,55 @@ update_compatibility();
         migration = state.result; %#ok<NASGU>
         save(fullfile(folder, name), 'migration', '-v7.3');
         status.Value = {['Saved result copy: ' fullfile(folder, name)]};
+    end
+
+    function export_deployment(~,~)
+        state = fig.UserData;
+        if isempty(state.result), return; end
+        migration = state.result;
+        if ~migration.summary.passed
+            show_error(MException('anc_migration_designer_gui:notDeployable', ...
+                'Held-out evaluation did not pass; deployment export is disabled.'), ...
+                'Controller is not deployable');
+            return;
+        end
+        if isempty(deployment_directory)
+            initial_directory = pwd;
+        else
+            initial_directory = deployment_directory;
+        end
+        if abs(migration.models.fs-48000)/48000 <= 0.01
+            suggested_name = 'Opfilter4.mat';
+        else
+            suggested_name = sprintf('Opfilter4_fs%.0f.mat', migration.models.fs);
+        end
+        [name, folder] = uiputfile({'*.mat','dSPACE fixed controller (*.mat)'}, ...
+            'Export validated fixed R/S controller', ...
+            fullfile(initial_directory, suggested_name));
+        if isequal(name, 0), return; end
+        output_file = fullfile(folder, name);
+        overwrite = false;
+        if isfile(output_file)
+            if strcmp(fig.Visible, 'on')
+                answer = uiconfirm(fig, sprintf('Overwrite %s?', output_file), ...
+                    'Confirm deployment overwrite', ...
+                    'Options', {'Overwrite','Cancel'}, 'DefaultOption', 2, ...
+                    'CancelOption', 2);
+                if ~strcmp(answer, 'Overwrite'), return; end
+                overwrite = true;
+            else
+                show_error(MException('anc_migration_designer_gui:outputExists', ...
+                    'Deployment file already exists: %s', output_file), ...
+                    'Deployment export failed');
+                return;
+            end
+        end
+        try
+            deployment_exporter(migration, output_file, 'Overwrite', overwrite);
+            status.Value = {['Exported validated fixed R/S: ' output_file]};
+        catch exception
+            show_error(exception, 'Deployment export failed');
+        end
     end
 
     function plot_preview(signals)
@@ -511,6 +599,9 @@ update_compatibility();
         state.result = [];
         fig.UserData = state;
         save_button.Enable = 'off';
+        if has_deployment_export
+            deployment_button.Enable = 'off';
+        end
     end
 
     function show_error(exception, title_text)
@@ -519,6 +610,29 @@ update_compatibility();
             uialert(fig, exception.message, title_text, 'Icon', 'error');
         end
     end
+end
+
+function controllers = select_controllers(catalog, requested)
+if isempty(requested)
+    controllers = catalog;
+    return;
+end
+if ischar(requested) || (isstring(requested) && isscalar(requested))
+    requested = cellstr(string(requested));
+else
+    requested = cellstr(string(requested(:)));
+end
+known = {catalog.id};
+unknown = requested(~ismember(requested, known));
+if ~isempty(unknown)
+    error('anc_migration_designer_gui:unknownControllerFilter', ...
+        'Unknown requested controller ids: %s.', strjoin(unknown, ', '));
+end
+controllers = catalog(ismember(known, requested));
+if isempty(controllers)
+    error('anc_migration_designer_gui:emptyControllerFilter', ...
+        'ControllerIds must select at least one controller.');
+end
 end
 
 function index = select_default_pair(pairs)
