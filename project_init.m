@@ -11,6 +11,7 @@ projectRoot = fileparts(mfilename('fullpath'));
 addpath(projectRoot);
 addpath(fullfile(projectRoot, 'dataset'));
 addpath(fullfile(projectRoot, 'dataset', 'analysis'));
+addpath(fullfile(projectRoot, 'anc_model_migration'));
 addpath(genpath(fullfile(projectRoot, 'shared')));
 
 % 系统辨识工具箱（通过 mpm 安装，MATLAB 不会自动加入路径）

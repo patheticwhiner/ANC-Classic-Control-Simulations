@@ -1,0 +1,488 @@
+\documentclass[UTF8,11pt,a4paper]{ctexart}
+
+\usepackage{amsmath,amssymb,bm}
+\usepackage{booktabs,longtable,tabularx,array}
+\usepackage{geometry}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{fancyhdr}
+
+\geometry{left=23mm,right=23mm,top=24mm,bottom=24mm}
+\hypersetup{colorlinks=true,linkcolor=blue!55!black,urlcolor=blue!55!black}
+\setlist{nosep,leftmargin=2em}
+\renewcommand{\arraystretch}{1.18}
+\pagestyle{fancy}
+\setlength{\headheight}{14pt}
+\fancyhf{}
+\lhead{ANC Model Migration Designer}
+\rhead{算法实现说明}
+\cfoot{\thepage}
+\lstset{basicstyle=\ttfamily\small,frame=single,breaklines=true,
+  columns=fullflexible,backgroundcolor=\color{gray!6}}
+
+\title{ANC Model Migration Designer\\算法实现与参数说明}
+\author{基于仓库可执行源码整理}
+\date{2026年7月19日}
+
+\begin{document}
+\maketitle
+\tableofcontents
+
+\section{文档目的与代码边界}
+
+本文说明 \texttt{anc\_model\_migration} 工具中实际可选的控制器算法、信息结构、
+自动候选生成、手动参数覆盖以及校准/留出评价流程。本文不是抽象的算法综述；公式和步骤
+以以下可执行文件为准：
+
+\begin{itemize}
+  \item 控制器调度：\path{anc_model_migration/run_anc_migration_controller.m}；
+  \item 候选生成与采样率缩放：\path{anc_model_migration/build_anc_migration_candidates.m}；
+  \item 手动参数契约：\path{anc_model_migration/anc_controller_parameter_definitions.m}；
+  \item Demo1--Demo5 与 IMC--FxLMS：\path{tests/internal/controller_demo*.m}；
+  \item 校准、评分和留出评价：\path{anc_model_migration/run_anc_migration.m}。
+\end{itemize}
+
+工具提供12个控制器入口。``fixed'' 表示运行期间不更新控制器参数；``adaptive'' 表示
+在线更新 FIR、Youla--Q 或内模频率参数。不同入口的信息结构并不相同，因此相同的抑制量
+不能自动解释为相同的传感器条件。
+
+\begin{longtable}{p{0.28\linewidth}p{0.27\linewidth}p{0.37\linewidth}}
+\toprule
+入口 ID & 控制方法 & 在线可用信息\\
+\midrule
+\endhead
+\texttt{demo1\_rst\_fixed} & 低阶 RST & 误差反馈\\
+\texttt{demo1\_qrls} & RST + Youla--Q RLS & 误差反馈、重构扰动\\
+\texttt{demo2\_lqg\_fixed} & 增广 LQG & 误差反馈、Kalman 扰动状态\\
+\texttt{demo2\_lms} & LQG + 归一化 LMS & 误差反馈、filtered-x 回归量\\
+\texttt{demo2\_qrls} & LQG + Q-RLS & 误差反馈、filtered-x 回归量\\
+\texttt{demo3\_fir\_fixed} & $F(z)$ + 固定 FIR & 源参考、次级通道模型\\
+\texttt{demo3\_imc\_fxnlms} & IMC--FxNLMS & 源参考、次级通道模型\\
+\texttt{demo4\_emopso\_rst} & $\varepsilon$-MOPSO RST & 误差反馈、离线模型优化\\
+\texttt{demo4\_emopso\_qrls} & 鲁棒 RST + Youla--Q RLS & 误差反馈、重构扰动\\
+\texttt{demo5\_marino\_fixed} & 固定频率内模 & 仅误差麦克风\\
+\texttt{demo5\_marino\_adaptive} & 自适应频率内模 & 仅误差麦克风\\
+\texttt{imc\_fxlms} & 反馈 IMC--FxLMS & 仅误差麦克风、内部参考重构\\
+\bottomrule
+\end{longtable}
+
+\section{统一模型、信号与评价流程}
+
+\subsection{离散通道约定}
+
+导入的主通道用于生成扰动，次级通道用于生成扬声器抗噪声。统一离散模型写为
+\begin{equation}
+  A(q^{-1})y_s(k)=B(q^{-1})u(k),
+\end{equation}
+其中 $B$ 保留辨识模型中的前导零与纯延迟。工具另外显式增加
+\texttt{control\_delay\_samples}（默认1拍），避免把辨识延迟与实时控制计算延迟混为一谈。
+闭环误差为
+\begin{equation}
+  e(k)=d(k)+y_s(k).
+\end{equation}
+符号约定由控制器内部的负反馈控制律实现，而不是通过修改通道模型的符号实现。
+
+\subsection{校准与留出评价}
+
+一次运行分为两个数据集：
+\begin{enumerate}
+  \item \textbf{校准集}：对 Quick/Standard 候选进行运行和评分；
+  \item \textbf{留出集}：冻结校准阶段选出的超参数，只运行一次独立评价。
+\end{enumerate}
+白噪声、带限噪声和多正弦使用独立随机种子；扫频场景可用反向扫频构造留出集。
+候选的可行性条件是输出有限、推断稳定、未发生限幅，且最大控制需求不超过
+\texttt{tuning\_demand\_limit}。评分实现为
+\begin{align}
+J={}&S_{\mathrm{dB}}
+-20\max(0,u_{\max}-u_{\mathrm{lim}})
+-50\,\mathbb{I}_{\mathrm{clip}} \\
+&-1000\,\mathbb{I}_{\mathrm{nonfinite}}
+-100\,\mathbb{I}_{\mathrm{unstable}},
+\end{align}
+其中 $S_{\mathrm{dB}}$ 是残差抑制量。最终 \texttt{passed} 还要求留出抑制量达到
+\texttt{success\_suppression\_db}。因此“候选成功运行”和“迁移性能通过”是两个不同结论。
+
+\section{辨识模型类型与控制器适用性的边界}
+
+\subsection{“LMS 模型”不是“LMS 控制器”}
+
+工具中的 LMS/ARMAX 描述的是\textbf{通道辨识结果的来源和表示形式}，控制器目录中的
+LMS、RLS、LQG、RST 等描述的是\textbf{控制器设计或在线更新方法}，两者没有一一绑定关系。
+LMS 模型文件保存辨识得到的 FIR 权重 $\bm w$，导入后写成
+\begin{equation}
+G_{\mathrm{FIR}}(q^{-1})=\frac{B(q^{-1})}{A(q^{-1})},\qquad
+A(q^{-1})=1,\quad B(q^{-1})=\bm w.
+\end{equation}
+ARMAX 文件原本可表示为
+\begin{equation}
+A(q^{-1})y(k)=B(q^{-1})u(k)+C(q^{-1})\varepsilon(k),
+\end{equation}
+但当前迁移工具只导入稳定的确定性通道 $B/A$；随机噪声多项式 $C$ 没有进入统一
+\texttt{model\_data}。因此，当前所谓“ARMAX 模型上的控制器设计”更准确地说是
+“使用从 ARMAX 辨识结果提取的确定性 $B/A$ 通道进行设计”。LQG 中的扰动状态和
+Kalman 协方差由场景及 \texttt{Qn\_*}/\texttt{Rn} 重新构造，并非直接使用辨识得到的
+$C(q^{-1})$。
+
+\subsection{统一适配层为何允许全部入口运行}
+
+主通道模型只用于把源信号变换为扰动
+\begin{equation}
+d(k)=G_p(q^{-1})x(k),
+\end{equation}
+而控制器统一接收次级通道的
+\begin{equation}
+\mathcal{M}_s=\{A_s,B_s,n_k,f_s\}.
+\end{equation}
+对 LMS/FIR，$A_s=1$；对 ARMAX，$A_s$ 是非平凡分母。控制器调度层只看到这组统一
+多项式和采样率，不再看到原始文件的辨识算法。当前控制器目录只声明允许的噪声类型，
+运行前的兼容性检查也只检查“控制器--噪声”组合，没有检查“控制器--模型族”组合。
+这是一种\textbf{接口兼容策略}，它解释了 GUI 为什么允许在两类模型上选择全部控制器，
+但不构成理论适用性证明。
+
+\subsection{各控制器族的实际边界}
+
+\begin{longtable}{p{0.20\linewidth}p{0.34\linewidth}p{0.38\linewidth}}
+\toprule
+控制器族 & 为什么 FIR/ARMAX 都能执行 & 不能由“成功执行”推出的结论\\
+\midrule
+\endhead
+RST / Youla--Q & 两类模型都可写为 $B/A$ 多项式；FIR 是 $A=1$ 的特殊情形。 &
+高阶 ARMAX 的 Sylvester/Bezout 方程可能病态。Demo1 在阶数过高时会退回
+$R_0=0,S_0=1$，此时“运行完成”不代表中央 RST 设计成功。\\
+
+增广 LQG & 任意适当的稳定 $B/A$ 都可转换为状态空间实现。 &
+当前状态空间只来自确定性 $B/A$；ARMAX 的随机多项式没有参与 Kalman 设计。
+高阶 FIR/ARMAX 还会带来较高状态维数和可控/可观数值条件问题。\\
+
+$F(z)$+FIR / FxNLMS & 展平滤波器、NMP 零点镜像和 filtered-x 通道均以 $A/B$ 计算。 &
+ARMAX/IIR 的高阶极点、非最小相位零点及近似相消可能放大模型误差；仿真中的精确模型
+闭环不代表实际对象同样鲁棒。\\
+
+$\varepsilon$-MOPSO RST & 优化器接受统一的 $A/B$ 多项式并搜索 RST 参数。 &
+搜索可结束不等于问题条件良好；多项式阶数、延迟裕度、Pareto 选解和控制器极点仍需
+针对模型单独验证。\\
+
+Marino--Tomei & 该算法的“特定模型”主要是扰动频率内模；对象侧只需稳定次级通道
+$B/A$ 来确定传播和反馈符号。 &
+适用性更受定频/窄带扰动、Case A 条件和次级通道相位影响，而不是简单由 FIR 或 ARMAX
+标签决定。\\
+
+反馈 IMC--FxLMS & 内部参考重构和 filtered-x 运算都可以使用 FIR 或稳定 IIR 次级模型。 &
+当前仿真假定 $\hat S=S$。实际实时系统通常更偏好因果稳定的 FIR 次级模型；IIR 模型的
+实现稳定性、模型失配和计算预算需要另行验证。\\
+\bottomrule
+\end{longtable}
+
+\subsection{必须区分的三类结论}
+
+对任意“模型--控制器”组合，应按以下三个层级解释结果：
+\begin{enumerate}
+  \item \textbf{接口可执行}：模型成功转换为 $A/B$，控制器返回有限数据；
+  \item \textbf{设计有效}：没有触发降级回退，闭环/控制器极点、数值条件及信息结构满足
+        该方法的设计假设；
+  \item \textbf{性能通过}：冻结参数后在留出数据上同时满足抑制、稳定性、控制需求和
+        零限幅门槛。
+\end{enumerate}
+完整组合矩阵测试主要证明第一层。第二层必须检查每种方法保存的设计诊断。第三层读取
+以下结果字段：
+\begin{center}
+\path{migration.evaluation.passed}
+\end{center}
+因此，不能把“所有组合都能运行”写成“所有算法天然适用于 LMS 与 ARMAX 两类模型”。
+
+更严格的 GUI 可进一步为控制器增加模型适用等级：\textbf{原生适用}、
+\textbf{统一表示后支持}、\textbf{实验性支持}和\textbf{不兼容}。在尚未实现该元数据前，
+当前模型下拉框应理解为“允许进行迁移试验”，而不是“已获得方法适用性认证”。
+
+\section{Demo1：RST 与 Youla--Q RLS}
+
+\subsection{固定低阶 RST}
+
+中央控制器以
+\begin{equation}
+  P_0(q^{-1})=A(q^{-1})S_0(q^{-1})+B(q^{-1})R_0(q^{-1})
+\end{equation}
+作为闭环特征多项式。低阶模型在 \texttt{f\_design} 处设计 $R_0/S_0$；当高阶
+ARMAX 的 Sylvester/Bezout 方程病态时，源码明确退回 $R_0=0,S_0=1$，而不是隐藏一个
+数值不稳定的控制器。固定控制律可概括为
+\begin{equation}
+u(k)=-R_0(q^{-1})y(k)-[S_0(q^{-1})-1]u(k-1),
+\end{equation}
+随后施加启动渐入和执行器硬限幅。
+
+\subsection{Youla--Q RLS}
+
+自适应入口保留同一中央控制器，并由模型重构扰动
+\begin{equation}
+  \hat w(k)=A(q^{-1})y(k)-B^*(q^{-1})u(k).
+\end{equation}
+这里 $B^*$ 与控制仿真的延迟索引保持一致。后验误差、Q 参数和协方差按
+\begin{align}
+e_p(k)&=\frac{e_0(k)}{1+\bm\phi^T(k)F(k)\bm\phi(k)},\\
+\bm Q(k+1)&=\bm Q(k)+F(k)\bm\phi(k)e_p(k),\\
+F^{-1}(k+1)&=\lambda_1F^{-1}(k)+\lambda_2\bm\phi(k)\bm\phi^T(k)
+\end{align}
+更新。若协方差含非有限值或条件数过差，源码将 Q 和协方差复位。主要手动参数是
+\texttt{nQ}、\texttt{lambda1}、\texttt{lambda2}、\texttt{F\_diag}、
+\texttt{f\_design} 与 \texttt{actuator\_limit}。
+
+\section{Demo2：增广 LQG 及自适应 Q 支路}
+
+\subsection{固定增广 LQG}
+
+对象状态和场景扰动状态组成
+\begin{align}
+\bm x_a(k+1)&=A_a\bm x_a(k)+B_au(k)+G_a\bm v(k),\\
+y(k)&=C_a\bm x_a(k)+n(k).
+\end{align}
+LQR 增益由
+\begin{equation}
+K=\operatorname{dlqr}(A_a,B_a,Q_{\mathrm{lqr}},R_{\mathrm{lqr}})
+\end{equation}
+得到；Kalman 增益使用 \texttt{Qn\_plant}、\texttt{Qn\_dist} 和
+\texttt{Rn}。观测器和固定控制律为
+\begin{align}
+\hat{\bm x}(k+1)&=(A_a-LC_a)\hat{\bm x}(k)+B_au(k)+Ly(k),\\
+u(k)&=-K\hat{\bm x}(k).
+\end{align}
+\texttt{augmented=false} 时只使用对象状态，不构造场景扰动模型。
+
+\subsection{归一化 LMS Q 支路}
+
+Q 支路输出叠加到 LQG 中央控制器：
+\begin{equation}
+u(k)=-K\hat{\bm x}(k)+\bm\theta^T(k)\bm q(k).
+\end{equation}
+创新经带通滤波，再经 $T_{12}$ 生成 filtered-x 回归量 $\bm\phi$。预热结束且上一个
+样本未限幅时，执行
+\begin{align}
+\alpha(k)&=\frac{\mu}{\delta+\bm\phi^T(k)\bm\phi(k)},\\
+\bm\theta(k+1)&=(1-\ell)\bm\theta(k)-\alpha(k)\bm\phi(k)y(k),
+\end{align}
+其中 \texttt{adaptation\_gain} 对应 $\mu$，\texttt{lms\_epsilon} 对应 $\delta$，
+\texttt{lms\_leakage} 对应 $\ell$。
+
+\subsection{Q-RLS 支路}
+
+RLS 入口使用
+\begin{align}
+\bm g(k)&=\frac{P(k)\bm\phi(k)}{\lambda+\bm\phi^T(k)P(k)\bm\phi(k)},\\
+\bm\theta(k+1)&=\bm\theta(k)-\mu\bm g(k)y(k),\\
+P(k+1)&=\lambda^{-1}[P(k)-\bm g(k)\bm\phi^T(k)P(k)].
+\end{align}
+每步对 $P$ 做对称化和 \texttt{rls\_regularization} 正则化，并用
+\texttt{theta\_norm\_limit} 投影 Q 参数范数。LMS/RLS 两个入口固定各自的算法分支，GUI
+只开放该分支的有效参数，避免把 \path{adaptation_method} 改成与入口名称不一致的值。
+
+\section{Demo3：\texorpdfstring{$F(z)$+FIR}{F(z)+FIR} 与 IMC--FxNLMS}
+
+\subsection{固定 FIR 设计}
+
+对次级通道非最小相位零点做单位圆镜像，得到 $\widetilde B(z)$。一阶稳定滤波器 $L(z)$
+与对象多项式组成
+\begin{align}
+F(z)&=\frac{A(z)}{L(z)\widetilde B(z)},\\
+H(z)&=\frac{z^{-d}B(z)F(z)}{A(z)}.
+\end{align}
+固定 FIR 系数通过 \texttt{f\_design} 处的实部/虚部插值约束求得，并执行
+\begin{equation}
+u(k)=-\texttt{control\_scale}\,F(z)\bm\theta^T\bm z_k.
+\end{equation}
+\texttt{N\_fir} 控制固定 FIR 长度。
+
+\subsection{IMC--FxNLMS}
+
+迁移候选生成器为该入口固定设置
+\texttt{adaptive\_structure=imc\_fxnlms}。当前实际调度分支使用外部源参考 $d(k)$，
+并将 \texttt{N\_nlms} 长度的在线 FIR 从零初始化；它不经过固定设计中的 $F(z)$，也不使用
+另一条 Jafari 分支的固定 FIR 初值。源参考经次级通道模型得到 filtered-x 回归向量
+$\bm d_f(k)$，然后以实测闭环残差更新：
+\begin{equation}
+\bm\theta(k+1)=\bm\theta(k)
++\frac{\mu_{\mathrm{nlms}}e(k)\bm d_f(k)}
+{0.01+\bm d_f^T(k)\bm d_f(k)}.
+\end{equation}
+控制请求为
+\begin{equation}
+u_{\mathrm{req}}(k)=-\texttt{control\_scale}\,\bm\theta^T(k)\bm d(k),
+\end{equation}
+更新在上一拍未限幅时进行。实现中的相关限定为：
+\begin{itemize}
+  \item 系数范数受 \path{theta_norm_limit} 约束；
+  \item \path{controller_demo3.m} 仍保留 Jafari 自适应分支；
+  \item 该分支不是 \path{demo3_imc_fxnlms} 迁移入口的候选结构。
+\end{itemize}
+
+\section{Demo4：\texorpdfstring{$\varepsilon$-MOPSO}{epsilon-MOPSO} 灵敏度整形 RST}
+
+\subsection{离线多目标中央控制器}
+
+优化变量 $\bm\vartheta$ 表示 $X/Y$ 多项式根，目标为灵敏度性能与控制需求的多目标折中：
+\begin{equation}
+  \min_{\bm\vartheta}\,[J_S(\bm\vartheta),J_U(\bm\vartheta)].
+\end{equation}
+多项式约束采用
+\begin{equation}
+  P_D=A H_S X+B^*H_RY,
+\end{equation}
+并评价闭环灵敏度
+\begin{equation}
+S_{yp}(z)=\frac{A(z)S(z)}{A(z)S(z)+B(z)R(z)}.
+\end{equation}
+工具以固定 \texttt{seed} 运行 $\varepsilon$-MOPSO，使用 \texttt{n\_pop}、
+\texttt{k\_max}、\texttt{epsilon} 和 \texttt{archive\_max} 控制预算，之后在
+\texttt{score\_band} 内确定性选择 Pareto 膝点并反解 $R/S$。该步骤是离线优化，运行时间
+明显长于其余入口。
+
+\subsection{鲁棒中央控制器上的 Youla--Q}
+
+自适应入口冻结上述中央控制器，再使用
+\begin{align}
+R&=R_0+A H_RH_SQ,\\
+S&=S_0-B^*H_RH_SQ
+\end{align}
+叠加与 Demo1 相同的 RLS 更新。因而两个 Demo4 入口的区别是“是否在线更新 Q”，而不是
+是否运行离线 $\varepsilon$-MOPSO。
+
+\section{Demo5：Marino--Tomei 内模控制}
+
+每个目标频率对应一个二阶离散振荡器：
+\begin{equation}
+\bm w_i(k+1)=\Phi(\theta_i)\bm w_i(k)+\Gamma_i e(k),\qquad
+\theta_i=\left(\frac{2\pi f_i}{f_s}\right)^2.
+\end{equation}
+控制输出由各振荡器第一状态求和后取负：
+\begin{equation}
+u(k)=-\sum_{i=1}^{q}w_{1,i}(k).
+\end{equation}
+\texttt{method=exact} 使用精确旋转矩阵，\texttt{method=euler} 使用 Euler 离散化；
+\texttt{output\_timing} 决定输出使用更新前或更新后的振荡器状态。
+
+固定入口强制 $\epsilon=0$。自适应入口执行投影频率更新
+\begin{align}
+\theta_i(k+1)=\Pi_{[\theta_{\min},\theta_{\max}]}
+\left[\theta_i(k)+\epsilon\sigma_iw_{2,i}(k)e(k)\right],\\
+\hat f_i(k)=\frac{f_s}{2\pi}\sqrt{\theta_i(k)}.
+\end{align}
+其中反馈符号 $\sigma_i$ 由初始化过程确定。该方法依赖窄带/周期扰动结构，所以固定入口
+只允许定频和多正弦，自适应入口允许定频、扫频和多正弦。手动修改
+\texttt{freq\_init\_hz} 时，工具自动令 $q$ 等于频率向量长度。
+
+\section{反馈 IMC--FxLMS 基线}
+
+该入口不使用外部参考传感器，而用次级通道模型重构内部参考：
+\begin{align}
+\hat d(k)&=e(k)-\hat S(z)u(k),\\
+x(k)&=z^{-\Delta}\hat d(k),\\
+x_f(k)&=\hat S(z)x(k).
+\end{align}
+其中第一处 $\hat S(z)$ 以实际控制信号 $u(k)$ 估计控制声，用于内部参考重构；第二处
+$\hat S(z)$ 对内部参考 $x(k)$ 做 filtered-x 滤波。两处是同一个次级通道模型的两次
+运算。$z^{-\Delta}$ 表示实现因果性所需的参考延迟；当前缓冲区控制律至少使用上一拍的
+重构参考。
+在当前仿真中，$\hat S=S$，因此模型误差不是本实验默认变量。未发生上一步限幅时，
+归一化更新为
+\begin{equation}
+\bm\theta(k+1)=\bm\theta(k)+
+\frac{\mu e(k)\bm x_f(k)}{\delta+\bm x_f^T(k)\bm x_f(k)},
+\end{equation}
+控制请求为
+\begin{equation}
+u_{\mathrm{req}}(k)=-\bm\theta^T(k)\bm x_k.
+\end{equation}
+随后依次执行系数范数投影、启动渐入和执行器限幅。主要参数是
+\texttt{N\_fir}、\texttt{mu}、\texttt{delta}、\texttt{norm\_limit}、
+\texttt{ramp\_seconds} 和 \texttt{actuator\_limit}。
+
+\section{自动候选与手动参数覆盖}
+
+\subsection{采样率缩放}
+
+候选表以2~kHz 为参考进行缩放：
+\begin{align}
+N(f_s)&=\max\!\left(2,\operatorname{round}\left[N_{2k}\frac{f_s}{2000}\right]\right),\\
+\lambda(f_s)&=\lambda_{2k}^{2000/f_s},\\
+\mu(f_s)&=\mu_{2k}\min\left(1,\frac{2000}{f_s}\right).
+\end{align}
+因此 3999~Hz 模型不会直接复用2~kHz 的 FIR 阶数和离散遗忘因子。界面显示的未覆盖值
+来自当前“模型采样率 + 场景 + Quick/Standard”组合，而不是静态文本常数。
+
+\subsection{GUI 编辑语义}
+
+同一窗口上方的“Controller parameters”分区每行包含 Override 复选框。执行语义如下：
+\begin{enumerate}
+  \item 未勾选：使用当前候选生成器给出的采样率相关值；
+  \item 勾选：解析并验证 Value，随后把该值覆盖到\emph{所有}自动候选；
+  \item 关闭“Auto tune candidate sweep”：先保留一个居中的默认候选，再施加手动覆盖；
+  \item 切换控制器时分别保存各控制器的界面覆盖值；Reset overrides 只清除当前控制器；
+  \item 未在参数契约中的字段会被拒绝，数值范围、整数、逻辑量和枚举值均在运行前验证。
+\end{enumerate}
+
+脚本入口与 GUI 完全使用同一后端。例如：
+\begin{lstlisting}[language=Matlab]
+cfg = anc_migration_config();
+cfg.design.controller_id = 'imc_fxlms';
+cfg.design.auto_tune = false;
+cfg.design.manual_params = struct( ...
+    'N_fir', 96, 'mu', 0.003, 'delta', 1e-4);
+migration = run_anc_migration(cfg);
+\end{lstlisting}
+
+\section{参数分类与调节建议}
+
+\begin{longtable}{p{0.23\linewidth}p{0.30\linewidth}p{0.39\linewidth}}
+\toprule
+类别 & 代表参数 & 调节影响\\
+\midrule
+\endhead
+模型/结构阶数 & \texttt{nQ}, \texttt{N\_fir}, \texttt{N\_nlms},
+\texttt{nX}, \texttt{nY} & 阶数提高可扩大表达能力，同时增加计算量、瞬态长度和数值风险。\\
+自适应速度 & \texttt{mu}, \texttt{mu\_nlms}, \texttt{adaptation\_gain},
+\texttt{epsilon} & 增大通常加快收敛，但更容易出现系数增长、控制需求过大或限幅。\\
+遗忘/协方差 & \texttt{lambda}, \texttt{lambda1}, \texttt{F\_init},
+\texttt{F\_diag} & 较小遗忘因子提高跟踪能力；协方差初值影响早期更新幅度。\\
+LQG 权重 & \texttt{Q\_lqr}, \texttt{R\_lqr}, \texttt{Qn\_*},
+\texttt{Rn} & 改变状态反馈激进程度与 Kalman 观测器对模型/测量的信任。\\
+频率结构 & \texttt{f\_design}, \texttt{bp\_band}, \texttt{f\_notch},
+\texttt{freq\_init\_hz} & 必须小于 Nyquist 频率，并与评价噪声的频谱支撑一致。\\
+安全约束 & \texttt{actuator\_limit}, \texttt{norm\_limit},
+\texttt{theta\_norm\_limit}, \texttt{ramp\_seconds} & 限制硬件需求和参数爆炸；不应仅为获得更高抑制量而放宽。\\
+优化预算 & \texttt{n\_pop}, \texttt{k\_max}, \texttt{archive\_max} & 只影响 Demo4 离线搜索质量与运行时间，不是在线采样周期参数。\\
+\bottomrule
+\end{longtable}
+
+手动调节后必须同时检查抑制量、\texttt{u\_demand\_max}、限幅次数、数值失败计数和
+稳定性证据。只比较抑制 dB 会把饱和控制器误判为更优控制器。
+
+\section{迁移到其他辨识模型时的适用条件}
+
+仅替换模型文件可以启动同一设计流程，但不能保证性能自动成立。至少需要满足：
+\begin{itemize}
+  \item 主/次级模型采样率一致，且模型延迟元数据被正确导入；
+  \item 场景频率低于新采样率的 Nyquist 频率，并留有滤波器过渡带；
+  \item 控制器依赖的信息结构在目标系统中真实可用；
+  \item 次级通道模型对 IMC/FxLMS/FxNLMS 足够准确；
+  \item 重新执行候选校准和独立留出评价，而不是复制旧模型的最佳参数；
+  \item 对高阶 ARMAX 特别检查 RST/Bezout 数值条件、闭环极点和控制需求。
+\end{itemize}
+工具对2~kHz 和3999~Hz 模型进行了候选缩放，但这种缩放只提供合理起点；它不是跨模型
+稳定性或抑制性能的证明。
+
+\section{可复现性与结果字段}
+
+结果结构分别保存以下证据：
+\begin{itemize}
+  \item \path{migration.config.design.manual_params}：手动参数覆盖；
+  \item \path{migration.calibration.candidates}：所有候选的参数、分数、错误与可行性；
+  \item \path{migration.calibration.best_params}：校准阶段冻结的最终参数；
+  \item \path{migration.evaluation}：留出评价；
+  \item \path{migration.summary}：简明结论。
+\end{itemize}
+
+报告或论文引用结果时，应同时注明模型文件、实际采样率、控制器入口、场景、校准/留出划分、
+最终参数、抑制量、控制需求、限幅次数和通过状态。失败候选与饱和候选属于实验结果的一部分，
+不得从记录中静默删除。
+
+\end{document}

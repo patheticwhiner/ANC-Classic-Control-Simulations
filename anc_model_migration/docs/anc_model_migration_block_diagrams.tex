@@ -1,0 +1,643 @@
+\documentclass[UTF8,11pt,a4paper]{ctexart}
+
+\usepackage{amsmath,amssymb,bm}
+\usepackage{booktabs,longtable}
+\usepackage{geometry}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{fancyhdr}
+\usepackage{float}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,calc,fit,backgrounds}
+
+\geometry{left=18mm,right=18mm,top=21mm,bottom=21mm}
+\setlength{\emergencystretch}{2em}
+\hypersetup{colorlinks=true,linkcolor=blue!55!black,urlcolor=blue!55!black}
+\setlist{nosep,leftmargin=2em}
+\pagestyle{fancy}
+\setlength{\headheight}{14pt}
+\fancyhf{}
+\lhead{ANC Model Migration Designer}
+\rhead{控制系统框图}
+\cfoot{\thepage}
+
+\definecolor{signalblue}{HTML}{1769AA}
+\definecolor{adaptorange}{HTML}{D97706}
+\definecolor{offlinegray}{HTML}{667085}
+\definecolor{controllergreen}{HTML}{DDF3E4}
+\definecolor{modelpurple}{HTML}{ECE7F7}
+\definecolor{updateyellow}{HTML}{FFF1CC}
+
+\tikzset{
+  >=Latex,
+  block/.style={draw,thick,rounded corners=2pt,align=center,
+    minimum height=11mm,minimum width=27mm,inner sep=3pt,fill=white},
+  controller/.style={block,fill=controllergreen},
+  model/.style={block,fill=modelpurple},
+  update/.style={block,fill=updateyellow},
+  sat/.style={block,minimum width=19mm,fill=gray!10},
+  sum/.style={draw,thick,circle,inner sep=0pt,minimum size=8mm,fill=white},
+  tap/.style={circle,fill=signalblue,draw=signalblue,inner sep=0pt,minimum size=1.6mm},
+  signal/.style={->,line width=0.9pt,draw=signalblue},
+  adapt/.style={->,thick,dashed,draw=adaptorange},
+  offline/.style={->,thick,dotted,draw=offlinegray},
+  fixedlayer/.style={draw=signalblue!45,dashed,rounded corners=4pt,
+    fill=signalblue!2,inner sep=5mm},
+  adaptlayer/.style={draw=adaptorange!65,dashed,rounded corners=4pt,
+    fill=adaptorange!3,inner sep=5mm},
+  offlinelayer/.style={draw=offlinegray!65,dotted,rounded corners=4pt,
+    fill=offlinegray!3,inner sep=5mm},
+  acousticlayer/.style={draw=adaptorange!55,dashed,rounded corners=4pt,
+    fill=updateyellow!18,inner sep=4mm},
+  layerlabel/.style={font=\footnotesize\bfseries,fill=white,inner sep=1.5pt},
+  note/.style={font=\footnotesize,align=left,text=black!75},
+  lab/.style={font=\footnotesize,fill=white,inner sep=1pt},
+  every node/.style={font=\small}
+}
+
+\newcommand{\plussigns}[1]{%
+  \node[font=\scriptsize] at ($(#1.west)+(1.6mm,1.8mm)$) {$+$};
+  \node[font=\scriptsize] at ($(#1.north)+(1.7mm,-1.5mm)$) {$+$};}
+
+\newcommand{\plussignsws}[1]{%
+  \node[font=\scriptsize] at ($(#1.west)+(1.6mm,1.8mm)$) {$+$};
+  \node[font=\scriptsize] at ($(#1.south)+(1.7mm,1.5mm)$) {$+$};}
+
+\newcommand{\reconsigns}[1]{%
+  \node[font=\scriptsize] at ($(#1.north)+(1.7mm,-1.5mm)$) {$+$};
+  \node[font=\scriptsize] at ($(#1.west)+(1.6mm,1.8mm)$) {$-$};}
+
+\newcommand{\diagramnewpage}{%
+  \clearpage\mbox{}\thispagestyle{fancy}\vspace{-\baselineskip}}
+
+\title{\texttt{anc\_model\_migration}\\控制系统与 ANC 算法基本框图}
+\author{依据当前可执行源码绘制}
+\date{2026年7月19日}
+
+\begin{document}
+\maketitle
+
+\section{如何绘制控制系统与 ANC 算法框图}
+
+控制系统框图的核心不是“把函数名排成方块”，而是把因果关系画清楚。对本项目中的 ANC
+算法，建议按以下顺序绘制：
+
+\begin{enumerate}
+  \item 先画物理闭环：控制量 $u$ 经次级通道 $S(z)$ 产生抗噪声 $y_s$，与主噪声
+  $d$ 在误差麦克风处相加，得到 $e=d+y_s$。
+  \item 再画控制器的信息入口：前馈控制器使用源参考；反馈控制器只使用误差麦克风；
+  IMC 结构从 $e$ 与 $\hat S(z)u$ 重构内部参考。
+  \item 将在线参数更新从控制信号通路中分离。LMS/RLS/FxNLMS 的回归量、误差和参数写在
+  虚线支路上，参数再回注到可调滤波器。
+  \item 将离线设计单独标出。LQR、Kalman、RST 综合以及 $\varepsilon$-MOPSO 的结果在运行前
+  固定，不能画成实时更新回路。
+  \item 在求和点标清正负号，并保留次级通道延迟。本文沿用源码的符号约定：物理求和为
+  $e=d+y_s$，控制器内部负责产生反相信号。
+\end{enumerate}
+
+本文统一用\textcolor{signalblue}{蓝色实线}表示实时信号，
+\textcolor{adaptorange}{橙色虚线}表示在线自适应信息，
+\textcolor{offlinegray}{灰色点线}表示离线设计。所有图中的“渐入/限幅”对应源码中的启动
+ramp 与执行器硬限幅；$S(z)=B(z)/A(z)$ 是真实次级通道，$\hat S(z)$ 是算法使用的次级
+通道模型。当前仿真中需要模型的入口默认使用 $\hat S=S$。
+
+排版沿用传统控制与 ANC 框图的阅读方向：实时主信号由左向右，物理回路从图形外缘返回；
+前馈 ANC 将主通道置于上层、控制通道置于中层、filtered-x 与权值更新置于下层；反馈
+控制器则将误差反馈、状态/扰动重构和在线参数更新分层绘制。复杂控制器独占页面，不再
+通过整体缩放把多个方块压缩到同一区域。
+
+具体布局参考经典 ANC 教程中的单通道前馈、反馈与混合结构~\cite{kuo1999tutorial}。
+自适应部分分别参考前馈 FxLMS~\cite{song2019fxlms}、IMC 反馈
+FxLMS~\cite{wang2014imc} 和自适应 Youla 调节~\cite{wu2014youla} 的常见画法。
+本文据此将误差求和点尽量固定在物理通道最右端，并显式划分“固定控制层”
+“自适应更新层”和“离线设计层”。
+
+\section{12 个控制器入口与框图索引}
+
+\begin{longtable}{p{0.31\linewidth}p{0.39\linewidth}p{0.18\linewidth}}
+\toprule
+入口 ID & 基本结构 & 图号\\
+\midrule
+\endhead
+\texttt{demo1\_rst\_fixed} & 固定低阶 RST 误差反馈 & 图~\ref{fig:demo1-fixed}\\
+\texttt{demo1\_qrls} & RST 中央控制器 + Youla--Q RLS & 图~\ref{fig:demo1-qrls}\\
+\texttt{demo2\_lqg\_fixed} & 增广 Kalman 观测器 + LQR 状态反馈 & 图~\ref{fig:demo2-fixed}\\
+\texttt{demo2\_lms} & LQG + filtered-x 归一化 LMS Q 支路 & 图~\ref{fig:demo2-lms}\\
+\texttt{demo2\_qrls} & LQG + filtered-x Q-RLS 支路 & 图~\ref{fig:demo2-rls}\\
+\texttt{demo3\_fir\_fixed} & $F(z)$ + 固定 FIR & 图~\ref{fig:demo3-fixed}\\
+\texttt{demo3\_imc\_fxnlms} & 外部参考 FxNLMS（沿用 IMC 入口名） & 图~\ref{fig:demo3-fxnlms}\\
+\texttt{demo4\_emopso\_rst} & 离线 $\varepsilon$-MOPSO + 固定 RST & 图~\ref{fig:demo4-fixed}\\
+\texttt{demo4\_emopso\_qrls} & eMOPSO RST + 在线 Youla--Q RLS & 图~\ref{fig:demo4-qrls}\\
+\texttt{demo5\_marino\_fixed} & 固定频率内模振荡器 & 图~\ref{fig:demo5-fixed}\\
+\texttt{demo5\_marino\_adaptive} & Marino--Tomei 自适应频率内模 & 图~\ref{fig:demo5-adaptive}\\
+\texttt{imc\_fxlms} & 纯反馈 IMC--FxLMS & 图~\ref{fig:imc-fxlms}\\
+\bottomrule
+\end{longtable}
+
+\section{Demo1：RST 与 Youla--Q RLS}
+
+\subsection{\texttt{demo1\_rst\_fixed}}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \node[controller] (rst) at (2.7,2.6) {$C_{RST}(z)$\\$S_0u=-R_0e$};
+  \node[sat] (sat) at (6.0,2.6) {渐入/限幅};
+  \node[model] (plant) at (9.1,2.6) {次级通道\\$S(z)=B/A$};
+  \node (d) at (9.7,4.8) {$d(k)$};
+  \node[sum] (se) at (12.8,4.8) {$\Sigma$}; \plussignsws{se}
+  \node (eout) at (14.3,4.8) {$e(k)$};
+  \begin{scope}[on background layer]
+    \node[fixedlayer,fit=(rst)(sat),label={[layerlabel]north west:固定控制层}] {};
+  \end{scope}
+  \draw[signal] (eout) -- ++(.35,0) |- ($(rst.west)+(-.6,1.15)$)
+    -- ($(rst.west)+(-.6,0)$) -- (rst.west);
+  \draw[signal] (rst) -- node[lab,above] {$u_{req}$} (sat);
+  \draw[signal] (sat) -- node[lab,above] {$u(k)$} (plant);
+  \draw[signal] (plant.east) -| node[lab,pos=.26,above] {$y_s(k)$} (se.south);
+  \draw[signal] (d) -- (se); \draw[signal] (se) -- (eout);
+  \node[note] at (6.0,.15) {$P_0=A S_0+B R_0$；运行期间 $R_0,S_0$ 固定。};
+\end{tikzpicture}
+\caption{固定低阶 RST：误差反馈闭环。}
+\label{fig:demo1-fixed}
+\end{figure}
+
+\diagramnewpage
+\subsection{\texttt{demo1\_qrls}}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \node[controller] (c0) at (2.6,4.0) {中央 RST\\$R_0/S_0$};
+  \node[sum] (su) at (5.3,4.0) {$\Sigma$};
+  \node[sat] (sat) at (7.5,4.0) {渐入/限幅};
+  \node[model] (plant) at (10.1,4.0) {$S(z)=B/A$};
+  \node (d) at (10.0,6.1) {$d(k)$};
+  \node[sum] (se) at (13.1,6.1) {$\Sigma$}; \plussignsws{se}
+  \node (eout) at (14.5,6.1) {$e(k)$};
+  \node[model] (obs) at (2.6,1.65) {扰动重构\\$\hat w=Ae-B^*u$};
+  \node[controller,minimum width=20mm] (q) at (5.4,1.65) {$Q(z)$};
+  \node[model] (filters) at (3.5,-.75) {$w_1=(S_0/P_0)\hat w$\\$\phi=(H_RH_SB^*/P_0)\hat w$};
+  \node[update] (rls) at (7.5,-.75) {RLS 更新\\$Q,F$};
+  \begin{scope}[on background layer]
+    \node[fixedlayer,fit=(c0)(su)(sat),label={[layerlabel]north west:固定控制层}] {};
+    \node[adaptlayer,fit=(obs)(q)(filters)(rls),label={[layerlabel]south west:自适应更新层}] {};
+  \end{scope}
+  \draw[signal] (eout) -- ++(.35,0) |- ($(c0.west)+(-.6,1.15)$)
+    -- ($(c0.west)+(-.6,0)$) -- node[lab,above] {$e$} (c0.west);
+  \draw[signal] (c0) -- (su);
+  \draw[signal] (su) -- (sat);
+  \draw[signal] (sat) -- node[lab,above] {$u$} (plant);
+  \draw[signal] (plant.east) -| node[lab,pos=.25,above] {$y_s$} (se.south);
+  \draw[signal] (d) -- (se); \draw[signal] (se) -- (eout);
+  \draw[signal] ($(c0.west)+(-.6,.55)$) |- (obs.west);
+  \draw[signal] (sat.south) -- ++(0,-1.15) -| node[lab,pos=.25,below] {$u$} (obs.south);
+  \draw[signal] (obs) -- node[lab,above] {$\hat w$} (q);
+  \draw[signal] (q.north) -- node[lab,right] {$-H_RH_SQ\hat w$} (su.south);
+  \draw[adapt] (obs) -- (filters);
+  \draw[adapt] (filters) -- (rls);
+  \draw[adapt] (eout) -- ++(.35,0) |- node[lab,pos=.76,right] {后验误差} (rls.east);
+  \draw[adapt] (rls.north) |- node[lab,pos=.72,above] {$Q$} (q.east);
+\end{tikzpicture}
+\caption{RST + Youla--Q RLS：蓝色为实时闭环，橙色为 Q 参数更新。}
+\label{fig:demo1-qrls}
+\end{figure}
+
+\diagramnewpage
+\section{Demo2：增广 LQG 与自适应 Q 支路}
+
+\subsection{\texttt{demo2\_lqg\_fixed}}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \node[model] (kalman) at (3.0,2.8) {增广 Kalman 观测器\\输入：$e,u$；输出：$\hat x$};
+  \node[controller,minimum width=21mm] (lqr) at (6.6,2.8) {状态反馈\\$-K\hat x$};
+  \node[sat] (sat) at (9.1,2.8) {渐入/限幅};
+  \node[model] (plant) at (11.5,2.8) {$S(z)$};
+  \node (d) at (10.4,5.0) {$d(k)$};
+  \node[sum] (se) at (13.4,5.0) {$\Sigma$}; \plussignsws{se}
+  \node (eout) at (14.8,5.0) {$e(k)$};
+  \begin{scope}[on background layer]
+    \node[fixedlayer,fit=(kalman)(lqr)(sat),label={[layerlabel]north west:固定 LQG 控制层}] {};
+  \end{scope}
+  \draw[signal] (eout) -- ++(.35,0) |- ($(kalman.west)+(-.6,1.1)$)
+    -- ($(kalman.west)+(-.6,0)$) -- node[lab,above] {$e$} (kalman.west);
+  \draw[signal] (kalman) -- node[lab,above] {$\hat x$} (lqr);
+  \draw[signal] (lqr) -- (sat);
+  \draw[signal] (sat) -- node[lab,above] {$u$} (plant);
+  \draw[signal] (plant.east) -| node[lab,pos=.25,above] {$y_s$} (se.south);
+  \draw[signal] (d) -- (se); \draw[signal] (se) -- (eout);
+  \draw[signal] (sat.south) -- ++(0,-1.05) -| node[lab,pos=.7,below] {$u$} (kalman.south);
+  \node[note] at (7.0,-.05) {观测更新：$\hat x^+=(A_a-LC_a)\hat x+B_au+Le$。\\
+    离线：$K=\mathrm{dlqr}(A_a,B_a,Q,R)$，$L$ 由 Kalman 噪声权重确定。};
+\end{tikzpicture}
+\caption{固定增广 LQG：观测器同时估计对象状态与扰动状态。}
+\label{fig:demo2-fixed}
+\end{figure}
+
+\diagramnewpage
+\vspace*{5mm}
+\subsection{\texttt{demo2\_lms}}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \node[model,minimum width=22mm] (obs) at (2.3,4.0) {Kalman\\观测器};
+  \node[controller,minimum width=20mm] (lqr) at (4.9,4.0) {$-K\hat x$};
+  \node[sum] (su) at (7.0,4.0) {$\Sigma$};
+  \node[sat] (sat) at (9.1,4.0) {渐入/限幅};
+  \node[model] (plant) at (11.4,4.0) {$S(z)$};
+  \node (d) at (10.3,6.2) {$d$};
+  \node[sum] (se) at (13.4,6.2) {$\Sigma$}; \plussignsws{se}
+  \node (eout) at (14.8,6.2) {$e$};
+  \node[model] (innov) at (2.4,1.55) {创新\\$r=e-C_a\hat x$};
+  \node[model] (bp) at (5.4,1.55) {带通 $H(z)$\\延迟基 $\bm q$};
+  \node[controller,minimum width=19mm] (q) at (7.9,1.55) {$\bm\theta^T\bm q$};
+  \node[model] (t12) at (4.8,-.85) {$T_{12}(z)\bm q$\\回归量 $\bm\phi$};
+  \node[update] (upd) at (8.6,-.85) {归一化 LMS\\泄漏/范数投影};
+  \begin{scope}[on background layer]
+    \node[fixedlayer,fit=(obs)(lqr)(su)(sat),label={[layerlabel]north west:固定 LQG 控制层}] {};
+    \node[adaptlayer,fit=(innov)(bp)(q)(t12)(upd),label={[layerlabel]south west:自适应 $Q$ 更新层}] {};
+  \end{scope}
+  \draw[signal] (eout)--++(.35,0)|-($(obs.west)+(-.6,1.1)$)
+    --($(obs.west)+(-.6,0)$)--node[lab,above] {$e$}(obs.west);
+  \draw[signal] (obs)--(lqr); \draw[signal] (lqr)--(su);
+  \draw[signal] (su)--(sat); \draw[signal] (sat)--node[lab,above] {$u$}(plant);
+  \draw[signal] (plant.east)-|node[lab,pos=.25,above] {$y_s$}(se.south);
+  \draw[signal] (d)--(se); \draw[signal] (se)--(eout);
+  \draw[signal] (sat.south)--++(0,-1.0)-|node[lab,pos=.72,below] {$u$}(obs.south);
+  \draw[signal] ($(obs.west)+(-.6,.55)$)|-(innov.west);
+  \draw[signal] (obs.south) -- node[lab,right] {$\hat x$} (innov.north);
+  \draw[signal] (innov)--(bp); \draw[signal] (bp)--(q); \draw[signal] (q)--(su.south);
+  \draw[adapt] (bp)--(t12); \draw[adapt] (t12)--node[lab,above] {$\phi$}(upd);
+  \draw[adapt] (eout)--++(.35,0)|-node[lab,pos=.76,right] {$e$}(upd.east);
+  \draw[adapt] (upd.north) |- node[lab,pos=.72,above] {$\theta$}(q.east);
+\end{tikzpicture}
+\caption{LQG + normalized LMS：Q 输出进入控制求和点，$T_{12}$ 只用于梯度。}
+\label{fig:demo2-lms}
+\end{figure}
+
+\diagramnewpage
+\subsection{\texttt{demo2\_qrls}}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \node[model,minimum width=22mm] (obs) at (2.3,4.0) {Kalman\\观测器};
+  \node[controller,minimum width=20mm] (lqr) at (4.9,4.0) {$-K\hat x$};
+  \node[sum] (su) at (7.0,4.0) {$\Sigma$};
+  \node[sat] (sat) at (9.1,4.0) {渐入/限幅};
+  \node[model] (plant) at (11.4,4.0) {$S(z)$};
+  \node (d) at (10.3,6.2) {$d$};
+  \node[sum] (se) at (13.4,6.2) {$\Sigma$}; \plussignsws{se}
+  \node (eout) at (14.8,6.2) {$e$};
+  \node[model] (innov) at (2.4,1.55) {$r=e-C_a\hat x$};
+  \node[model] (bp) at (5.4,1.55) {$H(z)$ + 延迟基\\$\bm q$};
+  \node[controller,minimum width=19mm] (q) at (7.9,1.55) {$\bm\theta^T\bm q$};
+  \node[model] (t12) at (4.8,-.85) {$T_{12}(z)\bm q$\\$\bm\phi$};
+  \node[update] (upd) at (8.6,-.85) {Q--RLS\\$P,\lambda$ 正则化};
+  \begin{scope}[on background layer]
+    \node[fixedlayer,fit=(obs)(lqr)(su)(sat),label={[layerlabel]north west:固定 LQG 控制层}] {};
+    \node[adaptlayer,fit=(innov)(bp)(q)(t12)(upd),label={[layerlabel]south west:自适应 $Q$ 更新层}] {};
+  \end{scope}
+  \draw[signal] (eout)--++(.35,0)|-($(obs.west)+(-.6,1.1)$)
+    --($(obs.west)+(-.6,0)$)--node[lab,above] {$e$}(obs.west);
+  \draw[signal] (obs)--(lqr); \draw[signal] (lqr)--(su);
+  \draw[signal] (su)--(sat); \draw[signal] (sat)--node[lab,above] {$u$}(plant);
+  \draw[signal] (plant.east)-|node[lab,pos=.25,above] {$y_s$}(se.south);
+  \draw[signal] (d)--(se); \draw[signal] (se)--(eout);
+  \draw[signal] (sat.south)--++(0,-1.0)-|node[lab,pos=.72,below] {$u$}(obs.south);
+  \draw[signal] ($(obs.west)+(-.6,.55)$)|-(innov.west);
+  \draw[signal] (obs.south)--node[lab,right] {$\hat x$}(innov.north);
+  \draw[signal] (innov)--(bp); \draw[signal] (bp)--(q); \draw[signal] (q)--(su.south);
+  \draw[adapt] (bp)--(t12); \draw[adapt] (t12)--(upd);
+  \draw[adapt] (eout)--++(.35,0)|-node[lab,pos=.76,right] {$e$}(upd.east);
+  \draw[adapt] (upd.north)|-node[lab,pos=.72,above] {$\theta$}(q.east);
+\end{tikzpicture}
+\caption{LQG + Q--RLS：与图~\ref{fig:demo2-lms} 共享信号结构，仅参数估计律不同。}
+\label{fig:demo2-rls}
+\end{figure}
+
+\diagramnewpage
+\section{Demo3：$F(z)$ + FIR 与 IMC--FxNLMS}
+
+\subsection{\texttt{demo3\_fir\_fixed}}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \node (x) at (0,4.5) {$x(k)$};
+  \node[tap] (tapx) at (.9,4.5) {};
+  \node[model] (primary) at (3.2,4.5) {主通道\\$P(z)$};
+  \node[sum] (se) at (13.1,4.5) {$\Sigma$}; \plussignsws{se}
+  \node[controller] (fir) at (3.2,2.1) {固定 FIR\\$\bm\theta_0^T\bm x$};
+  \node[controller] (f) at (6.0,2.1) {稳定滤波器\\$F(z)$};
+  \node[sat] (sat) at (8.7,2.1) {$-$增益\\渐入/限幅};
+  \node[model] (plant) at (11.1,2.1) {次级通道\\$S(z)$};
+  \begin{scope}[on background layer]
+    \node[fixedlayer,fit=(fir)(f)(sat),label={[layerlabel]north west:固定前馈控制层}] {};
+  \end{scope}
+  \draw[signal] (x)--(tapx); \draw[signal] (tapx)--(primary);
+  \draw[signal] (primary)--node[lab,above] {$d(k)$}(se);
+  \draw[signal] (tapx) |- node[lab,pos=.72,above] {源参考} (fir.west);
+  \draw[signal] (fir)--(f); \draw[signal] (f)--(sat); \draw[signal] (sat)--node[lab,above] {$u$}(plant);
+  \draw[signal] (plant.east)-|node[lab,pos=.28,above] {$y_s(k)$}(se.south);
+  \draw[signal] (se)--++(1.0,0) node[right] {$e(k)$};
+  \node[note] at (7.0,.35) {$\bm\theta_0$ 由设计频率处的实部/虚部插值约束离线求解。};
+\end{tikzpicture}
+\caption{$F(z)$ + 固定 FIR：源参考驱动，运行期间 FIR 系数不更新。}
+\label{fig:demo3-fixed}
+\end{figure}
+
+\diagramnewpage
+\vspace*{5mm}
+\subsection{\texttt{demo3\_imc\_fxnlms}}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \node (x) at (0,5.2) {$x(k)$};
+  \node[tap] (tapx) at (.8,5.2) {};
+  \node[model] (primary) at (3.1,5.2) {主通道\\$P(z)$};
+  \node[sum] (se) at (12.6,5.2) {$\Sigma$}; \plussignsws{se}
+  \node[controller] (fir) at (3.1,2.9) {自适应 FIR\\$\bm\theta^T\bm x$};
+  \node[sat] (sat) at (6.5,2.9) {$-$控制增益\\渐入/限幅};
+  \node[model] (plant) at (9.7,2.9) {次级通道\\$S(z)$};
+  \node[model] (shat) at (3.1,.55) {次级通道模型\\$\hat S(z)$};
+  \node[update] (upd) at (8.0,.55) {FxNLMS 更新\\归一化/范数投影};
+  \begin{scope}[on background layer]
+    \node[fixedlayer,fit=(fir)(sat),label={[layerlabel]north west:实时控制层}] {};
+    \node[adaptlayer,fit=(shat)(upd),label={[layerlabel]south west:自适应更新层}] {};
+  \end{scope}
+  \draw[signal] (x)--(tapx); \draw[signal] (tapx)--(primary);
+  \draw[signal] (primary)--node[lab,above] {$d(k)$}(se);
+  \draw[signal] (se)--++(1.0,0) node[right] {$e(k)$};
+  \draw[signal] (tapx)|-node[lab,pos=.72,above] {外部源参考}(fir.west);
+  \draw[signal] (fir)--(sat); \draw[signal] (sat)--node[lab,above] {$u$}(plant);
+  \draw[signal] (plant.east)-|node[lab,pos=.28,above] {$y_s(k)$}(se.south);
+  \draw[adapt] (tapx)|-(shat.west);
+  \draw[adapt] (shat)--node[lab,above,align=center] {filtered-x\\$\bm\phi$}(upd);
+  \draw[adapt] (se.east)--++(1.0,0)|-node[lab,pos=.72,right] {$e$}(upd.east);
+  \draw[adapt] (upd.north)--++(0,.8)-|node[lab,pos=.72,above] {$\bm\theta$}(fir.south);
+\end{tikzpicture}
+\caption{当前迁移入口的 IMC--FxNLMS：使用外部源参考，$\hat S(z)$ 只生成 filtered-x 回归量。}
+\label{fig:demo3-fxnlms}
+\end{figure}
+
+图~\ref{fig:demo3-fxnlms} 采用传统前馈 FxLMS 的三层画法：上层是
+$x\!\rightarrow\!P\!\rightarrow\!d$ 主通道，中层是
+$x\!\rightarrow\!W\!\rightarrow\!S\!\rightarrow\!y_s$ 控制通道，下层是
+$\hat S$ 与 FxNLMS 参数更新。这里的 ``IMC'' 是当前入口名称的一部分；按实际代码，
+它不执行纯反馈 IMC 的内部参考重构，不能与图~\ref{fig:imc-fxlms} 混同。
+
+\diagramnewpage
+\section{Demo4：$\varepsilon$-MOPSO 灵敏度整形 RST}
+
+\subsection{\texttt{demo4\_emopso\_rst}}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \node[controller] (rst) at (2.9,3.0) {固定鲁棒 RST\\$R_0/S_0$};
+  \node[sat] (sat) at (6.3,3.0) {渐入/限幅};
+  \node[model] (plant) at (9.4,3.0) {$S(z)=B/A$};
+  \node (d) at (9.6,5.2) {$d$};
+  \node[sum] (se) at (12.8,5.2) {$\Sigma$}; \plussignsws{se}
+  \node (eout) at (14.2,5.2) {$e$};
+  \node[model] (models) at (2.7,.0) {$A,B^*,H_R,H_S$\\频带与约束};
+  \node[update] (mopso) at (6.8,.0) {离线 $\varepsilon$-MOPSO\\Pareto 膝点选择};
+  \begin{scope}[on background layer]
+    \node[fixedlayer,fit=(rst)(sat),label={[layerlabel]north west:固定控制层}] {};
+    \node[offlinelayer,fit=(models)(mopso),label={[layerlabel]south west:离线设计层}] {};
+  \end{scope}
+  \draw[signal] (eout)--++(.35,0)|-($(rst.west)+(-.6,1.15)$)
+    --($(rst.west)+(-.6,0)$)--(rst.west);
+  \draw[signal] (rst)--(sat); \draw[signal] (sat)--node[lab,above] {$u$}(plant);
+  \draw[signal] (plant.east)-|node[lab,pos=.25,above] {$y_s$}(se.south);
+  \draw[signal] (d)--(se); \draw[signal] (se)--(eout);
+  \draw[offline] (models)--(mopso); \draw[offline] (mopso)--node[lab,right] {$R_0,S_0$}(rst.south);
+\end{tikzpicture}
+\caption{eMOPSO-shaped RST：优化只在离线设计阶段运行，闭环运行时参数冻结。}
+\label{fig:demo4-fixed}
+\end{figure}
+
+\diagramnewpage
+\vspace*{5mm}
+\subsection{\texttt{demo4\_emopso\_qrls}}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \node[controller] (rst) at (2.5,4.1) {eMOPSO RST\\$R_0/S_0$};
+  \node[sum] (su) at (5.3,4.1) {$\Sigma$};
+  \node[sat] (sat) at (7.5,4.1) {渐入/限幅};
+  \node[model] (plant) at (10.0,4.1) {$S(z)$};
+  \node (d) at (10.0,6.2) {$d$};
+  \node[sum] (se) at (13.1,6.2) {$\Sigma$}; \plussignsws{se}
+  \node (eout) at (14.5,6.2) {$e$};
+  \node[model] (obs) at (2.5,1.7) {扰动重构\\$\hat w=Ae-B^*u$};
+  \node[controller,minimum width=20mm] (q) at (5.4,1.7) {$Q(z)$};
+  \node[model] (filt) at (3.6,-.7) {$S_0/P_0$ 与 $B^*/P_0$\\目标/回归滤波};
+  \node[update] (rls) at (7.6,-.7) {Youla--Q RLS};
+  \node[update] (mopso) at (2.5,6.2) {离线 $\varepsilon$-MOPSO\\输出 $R_0,S_0$};
+  \begin{scope}[on background layer]
+    \node[fixedlayer,fit=(rst)(su)(sat),label={[layerlabel]north west:固定控制层}] {};
+    \node[adaptlayer,fit=(obs)(q)(filt)(rls),label={[layerlabel]south west:自适应 $Q$ 更新层}] {};
+    \node[offlinelayer,fit=(mopso),label={[layerlabel]north:离线设计层}] {};
+  \end{scope}
+  \draw[signal] (eout)--++(.35,0)|-($(rst.west)+(-.6,1.15)$)
+    --($(rst.west)+(-.6,0)$)--node[lab,above] {$e$}(rst.west);
+  \draw[signal] (rst)--(su);
+  \draw[signal] (su)--(sat); \draw[signal] (sat)--node[lab,above] {$u$}(plant);
+  \draw[signal] (plant.east)-|node[lab,pos=.25,above] {$y_s$}(se.south);
+  \draw[signal] (d)--(se); \draw[signal] (se)--(eout);
+  \draw[signal] ($(rst.west)+(-.6,.55)$)|-(obs.west);
+  \draw[signal] (sat.south)--++(0,-1.1)-|node[lab,pos=.25,below] {$u$}(obs.south);
+  \draw[signal] (obs)--(q); \draw[signal] (q)--(su.south);
+  \draw[adapt] (obs)--(filt); \draw[adapt] (filt)--(rls);
+  \draw[adapt] (eout)--++(.35,0)|-node[lab,pos=.76,right] {后验误差}(rls.east);
+  \draw[adapt] (rls.north)|-node[lab,pos=.72,above] {$Q$}(q.east);
+  \draw[offline] (mopso.south)--node[lab,right] {$R_0,S_0$}(rst.north);
+\end{tikzpicture}
+\caption{eMOPSO RST + Youla--Q RLS：灰色为离线中央控制器设计，橙色为在线 Q 更新。}
+\label{fig:demo4-qrls}
+\end{figure}
+
+\diagramnewpage
+\section{Demo5：Marino--Tomei 内模控制}
+
+\subsection{\texttt{demo5\_marino\_fixed}}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \node[controller] (osc) at (2.8,2.8) {固定频率内模组\\$w_i^+=\Phi(\theta_{i,0})w_i+\Gamma_i e$};
+  \node[controller] (out) at (6.6,2.8) {$u_{req}=-\sum_i w_{1,i}$};
+  \node[sat] (sat) at (9.2,2.8) {渐入/限幅};
+  \node[model] (plant) at (11.6,2.8) {$S(z)$};
+  \node (d) at (10.4,5.0) {$d$};
+  \node[sum] (se) at (13.4,5.0) {$\Sigma$}; \plussignsws{se}
+  \node (eout) at (14.8,5.0) {$e$};
+  \begin{scope}[on background layer]
+    \node[fixedlayer,fit=(osc)(out)(sat),label={[layerlabel]north west:固定内模控制层}] {};
+  \end{scope}
+  \draw[signal] (eout)--++(.35,0)|-($(osc.west)+(-.6,1.15)$)
+    --($(osc.west)+(-.6,0)$)--(osc.west);
+  \draw[signal] (osc)--(out); \draw[signal] (out)--(sat); \draw[signal] (sat)--(plant);
+  \draw[signal] (plant.east)-|node[lab,pos=.25,above] {$y_s$}(se.south);
+  \draw[signal] (d)--(se); \draw[signal] (se)--(eout);
+  \node[note] at (7.0,.0) {$\epsilon=0$，因此 $\theta_{i,0}=(2\pi f_{i,0}/f_s)^2$ 在运行期间固定。};
+\end{tikzpicture}
+\caption{固定 Marino--Tomei 内模：只使用误差麦克风，不需要外部参考。}
+\label{fig:demo5-fixed}
+\end{figure}
+
+\diagramnewpage
+\subsection{\texttt{demo5\_marino\_adaptive}}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \node[controller] (osc) at (2.8,4.0) {内模振荡器组\\$w_i^+=\Phi(\theta_i)w_i+\Gamma_i e$};
+  \node[controller] (out) at (6.5,4.0) {$-\sum_i w_{1,i}$};
+  \node[sat] (sat) at (9.0,4.0) {渐入/限幅};
+  \node[model] (plant) at (11.5,4.0) {$S(z)$};
+  \node (d) at (10.4,6.2) {$d$};
+  \node[sum] (se) at (13.4,6.2) {$\Sigma$}; \plussignsws{se}
+  \node (eout) at (14.8,6.2) {$e$};
+  \node[update] (freq) at (6.2,.7) {频率更新与投影\\$\theta_i^+=\Pi[\theta_i+\epsilon\sigma_iw_{2,i}e]$};
+  \begin{scope}[on background layer]
+    \node[fixedlayer,fit=(osc)(out)(sat),label={[layerlabel]north west:实时内模控制层}] {};
+    \node[adaptlayer,fit=(freq),label={[layerlabel]south:自适应频率更新层}] {};
+  \end{scope}
+  \draw[signal] (eout)--++(.35,0)|-($(osc.west)+(-.6,1.15)$)
+    --($(osc.west)+(-.6,0)$)--(osc.west);
+  \draw[signal] (osc)--(out); \draw[signal] (out)--(sat); \draw[signal] (sat)--(plant);
+  \draw[signal] (plant.east)-|node[lab,pos=.25,above] {$y_s$}(se.south);
+  \draw[signal] (d)--(se); \draw[signal] (se)--(eout);
+  \draw[adapt] (eout)--++(.35,0)|-node[lab,pos=.76,right] {$e$}(freq.east);
+  \draw[adapt] (osc.south)--++(0,-1.05)-|node[lab,pos=.7,above] {$w_{2,i}$}(freq.west);
+  \draw[adapt] (freq.north)--++(0,.75)-|node[lab,pos=.72,above] {$\theta_i$}
+    ($(osc.south)+(.45,0)$);
+\end{tikzpicture}
+\caption{自适应 Marino--Tomei 内模：频率参数被投影到允许频带内。}
+\label{fig:demo5-adaptive}
+\end{figure}
+
+\diagramnewpage
+\section{反馈 IMC--FxLMS 基线}
+
+\subsection{\texttt{imc\_fxlms}}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=.85cm,y=.85cm]
+  \node[tap] (tapx) at (.7,4.0) {};
+  \node[controller] (fir) at (3.0,4.0) {自适应控制器 $W(z)$\\$u_{req}=-\bm\theta^T\bm x$};
+  \node[sat,minimum width=18mm] (sat) at (6.15,4.0) {渐入/限幅};
+  \node[tap] (tapu) at (7.45,4.0) {};
+  \node[model,minimum width=23mm] (plant) at (9.3,4.0) {真实次级通道\\$S(z)$};
+  \node (d) at (12.2,7.0) {$d(n)$};
+  \node[sum] (se) at (12.2,5.8) {$\Sigma$}; \plussigns{se}
+  \node (eout) at (13.7,5.8) {$e(n)$};
+
+  \node[model] (shatx) at (3.0,1.25) {$\hat S(z)$\\$x_f(n)=\hat S(z)x(n)$};
+  \node[update] (upd) at (6.0,1.25) {FxLMS 更新\\$e(n),\,x_f(n)$};
+  \node[model] (shatu) at (9.3,1.25) {$\hat S(z)$\\$\hat y_s(n)=\hat S(z)u(n)$};
+  \node[sum] (recsum) at (12.2,1.25) {$\Sigma$}; \reconsigns{recsum}
+  \node[block,minimum width=15mm] (delay) at (12.2,-.55) {$z^{-\Delta}$};
+  \node[tap] (etap) at (14.3,2.45) {};
+  \begin{scope}[on background layer]
+    \node[fixedlayer,fit=(fir)(sat),label={[layerlabel]north west:实时控制层}] {};
+    \node[adaptlayer,fit=(shatx)(upd)(shatu)(recsum)(delay),
+      label={[layerlabel]south west:内部参考重构与 filtered-x 更新层}] {};
+    \node[acousticlayer,fit=(d)(se)(eout),label={[layerlabel]north:声学叠加}] {};
+  \end{scope}
+  \draw[signal] (tapx)--(fir);
+  \draw[signal] (fir)--(sat); \draw[signal] (sat)--node[lab,above] {$u(n)$}(tapu);
+  \draw[signal] (tapu)--(plant);
+  \draw[signal] (plant.east)-|node[lab,pos=.25,above] {$y_s(n)$}(se.west);
+  \draw[signal] (d)--(se.north); \draw[signal] (se)--(eout);
+
+  \draw[adapt] (tapx.south)|-node[lab,pos=.72,above] {$x(n)$}(shatx.west);
+  \draw[adapt] (shatx)--node[lab,above] {$x_f(n)$}(upd);
+  \draw[adapt] (upd.north)--++(0,.85)-|node[lab,pos=.7,above] {$\bm\theta$}(fir.south);
+
+  \draw[signal] (tapu.south)--++(0,-.85)-|node[lab,pos=.73,above] {$u(n)$}(shatu.north);
+  \draw[signal] (shatu)--node[lab,above] {$\hat y_s(n)$}(recsum.west);
+  \draw[signal] (eout.east)--(14.3,5.8)--node[lab,right] {$e(n)$}(etap)
+    --(14.3,2.1)--(12.2,2.1)--(recsum.north);
+  \draw[adapt] (etap)--(7.8,2.45)--(7.8,1.25)
+    --node[lab,above] {$e(n)$}(upd.east);
+  \draw[signal] (recsum)--node[lab,right] {$\hat d(n)$}(delay);
+  \draw[signal] (delay.south)--++(0,-.65)-|($(tapx.west)+(-.65,0)$)
+    --node[lab,above] {$x(n)$}(tapx.west);
+\end{tikzpicture}
+\caption{纯反馈 IMC--FxLMS：由 $e-\hat S u$ 重构内部参考，经因果延迟反馈到
+$W(z)$；另一条 $\hat S(z)$ 支路生成 filtered-x 信号。}
+\label{fig:imc-fxlms}
+\end{figure}
+
+图中先由 $\hat d(n)=e(n)-\hat y_s(n)$ 重构主扰动，再令
+$x(n)=z^{-\Delta}\hat d(n)$ 作为控制器内部参考。两处 $\hat S(z)$ 表示同一个次级通道
+模型的两次运算：一处以实际控制信号 $u(n)$ 估计控制声 $\hat y_s(n)$，另一处滤波
+$x(n)$ 生成 $x_f(n)$。重复绘制是为了显式区分“参考重构”与“filtered-x”两种用途，
+并不表示需要辨识两个不同的次级通道模型。
+
+\diagramnewpage
+\section{实现边界与读图注意事项}
+
+\begin{itemize}
+  \item 图中的 $d(k)$ 是代码传入控制仿真的麦克风位置主噪声。反馈控制器图直接从 $d(k)$
+  开始，因为主通道已在信号准备阶段生成该信号；Demo3 为了对应传统前馈 ANC 画法，显式
+  补画 $x(k)\rightarrow P(z)\rightarrow d(k)$，但它不改变控制器函数的实际输入接口。
+  \item Demo1 与 Demo4 的固定 RST 都可能受高阶模型的 Bezout 数值条件限制；框图表示结构，
+  不代表任意导入模型都能得到稳定且有效的 $R_0/S_0$。
+  \item Demo2 的 $T_{12}$、Demo3/IMC 的 $\hat S$ 以及 Youla--Q 的回归滤波器属于算法内部
+  模型通路，不是额外的物理扬声器或麦克风。
+  \item 所有在线更新都会受到预热、限幅状态、数值复位或参数范数/频带投影约束；为保持基本
+  框图可读性，这些保护逻辑统一写在更新块或“渐入/限幅”块内。
+\end{itemize}
+
+\sloppy
+\section{代码依据}
+
+本文逐项核对以下源码：
+\begin{itemize}
+  \item 控制器入口：\path{anc_model_migration/anc_controller_catalog.m}；
+  \item 调度关系：\path{anc_model_migration/run_anc_migration_controller.m}；
+  \item 控制律：\path{tests/internal/controller_demo1.m} 至
+  \path{tests/internal/controller_demo5.m}；
+  \item 反馈 IMC 基线：\path{tests/internal/controller_imc_fxlms.m}。
+\end{itemize}
+因此本文描述的是当前仓库实现，而不是只依据算法名称推测的教科书通用结构。
+
+\begin{thebibliography}{9}
+\bibitem{kuo1999tutorial}
+S. M. Kuo and D. R. Morgan,
+``Active noise control: a tutorial review,''
+\emph{Proceedings of the IEEE}, vol. 87, no. 6, pp. 943--973, 1999,
+doi: \href{https://doi.org/10.1109/5.763310}{10.1109/5.763310}.
+
+\bibitem{song2019fxlms}
+P. Song and H. Zhao,
+``Filtered-x least mean square/fourth algorithm for active noise control,''
+\emph{Mechanical Systems and Signal Processing}, vol. 120, pp. 69--82, 2019,
+doi: \href{https://doi.org/10.1016/j.ymssp.2018.10.009}{10.1016/j.ymssp.2018.10.009}.
+
+\bibitem{wang2014imc}
+T. Wang and W.-S. Gan,
+``Stochastic analysis of FXLMS-based internal model control feedback active noise control systems,''
+\emph{Signal Processing}, vol. 101, pp. 121--133, 2014,
+doi: \href{https://doi.org/10.1016/j.sigpro.2014.01.025}{10.1016/j.sigpro.2014.01.025}.
+
+\bibitem{wu2014youla}
+Z. Wu, M. Liu, and F. Ben Amara,
+``Youla parameterized adaptive regulation against unknown multiple narrow-band disturbances,''
+\emph{Transactions of the Institute of Measurement and Control}, vol. 36, no. 8,
+pp. 1050--1064, 2014, doi: \href{https://doi.org/10.1177/0142331213492368}{10.1177/0142331213492368}.
+\end{thebibliography}
+
+\end{document}
